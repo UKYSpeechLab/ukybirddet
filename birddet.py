@@ -1,17 +1,32 @@
-# Author: Sidrah Liaqat
-# This code is a basic implementation of bird detector based on bulbul architecture
-# This code checks performance of bird detector on a single dataset BirdVox20k
+# DCASE 2018 - Bird Audio Detection challenge (Task 3)
+
+# This code is a basic implementation of bird audio detector (based on baseline code's architecture)
+# This code performs three-fold crossvalidation checks performance of bird detector on a single dataset BirdVox20k
+# AUC score calculation not added yet.
 
 import h5py
 import csv
 import numpy as np
+
 from keras.layers import Conv2D, Dropout, MaxPooling2D, Dense, GlobalAveragePooling2D, Flatten
-from keras import Sequential
 from keras.losses import binary_crossentropy, mean_squared_error, mean_absolute_error
 
-SPECTPATH = 'C:/Sidrah/DCASE2018/dataset/spect/'
+SPECTPATH = '/audio/audio/workingfiles/spect/'
+# path to spectrogram files stored in separate directories for each dataset
+# -spect/
+#       BirdVox-DCASE-20k
+#       ff1010bird
+#       warblrb10k
+
 LABELPATH = 'labels/'
+# path to label files stored in a single directory named accordingly for each dataset
+# -labels/
+#       BirdVox-DCASE-20k.csv, ff1010bird.csv, warblrb10k.csv
+
 FILELIST = 'filelist/'
+# create this directory in main project directory
+
+
 DATASET = 'BirdVox-DCASE-20k.csv'
 BATCH_SIZE = 32
 shape=(700,80)
@@ -65,19 +80,17 @@ train_generator = data_generator(FILELIST+'train', 32, False)
 validation_generator = data_generator(FILELIST+'test', 32, False)
 
 model = Sequential()
-model.add(Conv2D(16, (3,3), padding='same', activation='relu', input_shape=(700,80, 1)))
-model.add(Conv2D(8, (3,3), padding='same', activation='relu'))
-model.add(Conv2D(4, (3,3), padding='same', activation='relu'))
-#model1.add(GlobalAveragePooling2D())
+model.add(Conv2D(16, (3,3), padding='none', activation='leakyrelu', input_shape=(700,80, 1)))
+model.add(Conv2D(16, (3,3), padding='none', activation='leakyrelu'))
+model.add(Conv2D(16, (3,1), padding='none', activation='leakyrelu'))
+model.add(Conv2D(16, (3,1), padding='none', activation='leakyrelu'))
+
 model.add(Flatten())
-model.add(Dense(256, activation='relu'))
-model.add(Dense(32, activation='relu'))
+model.add(Dense(256, activation='leakyrelu'))
+model.add(Dense(32, activation='leakyrelu'))
 model.add(Dense(1, activation='sigmoid'))
 
-#model1.compile(optimizer=optimizers.adam(), loss=losses.categorical_crossentropy())
-
 model.compile(optimizer='sgd', loss='binary_crossentropy', metrics=['acc'])
-#model.compile(optimizer='sgd', loss='mean_squared_error', metrics=['acc'])
 
 model.summary()
 
@@ -89,6 +102,6 @@ history = model.fit_generator(
         steps_per_epoch=my_steps,
         epochs=20,
         validation_data=validation_generator,
-        validation_steps=800)
+        validation_steps=my_val_steps)
 
 print('Debugging!')
