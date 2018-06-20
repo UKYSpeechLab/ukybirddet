@@ -61,6 +61,7 @@ def data_generator(filelistpth, batch_size = 32, shuffle=False):
         hf = h5py.File(SPECTPATH + file_id + '.h5', 'r')
         imagedata = hf.get('features')
         imagedata = np.array(imagedata)
+        imagedata = (imagedata + 8.5) / 10
 
         imagedata = np.reshape(imagedata, (imagedata.shape[0], imagedata.shape[1], 1 ) )
 
