@@ -95,12 +95,16 @@ keras.layers.normalization.BatchNormalization(epsilon=1e-06, mode=0, axis=-1, mo
 # convolution layers
 model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(700, 80, 1)))
 model.add(LeakyReLU(alpha=.001))
+model.add(MaxPooling2D(pool_size=(3,3), strides=(1,1)))
 model.add(Conv2D(16, (3, 3), padding='valid'))
 model.add(LeakyReLU(alpha=.001))
+model.add(MaxPooling2D(pool_size=(3,3), strides=(1,1)))
 model.add(Conv2D(16, (3, 1), padding='valid'))
 model.add(LeakyReLU(alpha=.001))
+model.add(MaxPooling2D(pool_size=(3,1), strides=(1,1)))
 model.add(Conv2D(16, (3, 1), padding='valid'))
 model.add(LeakyReLU(alpha=.001))
+model.add(MaxPooling2D(pool_size=(3,1), strides=(1,1)))
 
 # dense layers
 model.add(Dropout(0.5))
@@ -120,9 +124,11 @@ model.summary()
 my_steps = np.round(14000.0 / BATCH_SIZE)
 my_val_steps = np.round(6000.0 / BATCH_SIZE)
 
+"""
 history = model.fit_generator(
     train_generator,
     steps_per_epoch=my_steps,
     epochs=EPOCH_SIZE,
     validation_data=validation_generator,
     validation_steps=my_val_steps)
+    """
