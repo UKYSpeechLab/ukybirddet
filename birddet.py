@@ -38,8 +38,6 @@ shape = (700, 80)
 spect = np.zeros(shape)
 label = np.zeros(1)
 
-datagen = ImageDataGenerator()
-
 # filelist-can also be path
 def data_generator(filelistpth, batch_size=64, shuffle=False):
     batch_index = 0
@@ -87,26 +85,30 @@ validation_generator = data_generator(FILELIST + 'test', 32, False)
 
 model = Sequential()
 # augmentation layer
-
+# code from baseline : "augment:Rotation|augment:Shift(low=-1,high=1,axis=3)"
+# keras normalization layer : TO BE DONE
 
 # normalization layer
-keras.layers.normalization.BatchNormalization(epsilon=1e-06, mode=0, axis=-1, momentum=0.9, weights=None, beta_init='zero', gamma_init='one')
+# code from baseline : "normpart="normalize:BatchNorm(axes=0x1x2,alpha=0.1,beta=None,gamma=None)"  # normalize over all except frequency axis"
+# keras normalization layer:
+# keras.layers.normalization.BatchNormalization(epsilon=1e-06, mode=0, axis=-1, momentum=0.9, weights=None, beta_init='zero', gamma_init='one')
 
 # convolution layers
 model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(700, 80, 1)))
 model.add(LeakyReLU(alpha=.001))
-model.add(MaxPooling2D(pool_size=(3,3), strides=(1,1)))
+model.add(MaxPooling2D(pool_size=(3,3)))
 model.add(Conv2D(16, (3, 3), padding='valid'))
 model.add(LeakyReLU(alpha=.001))
-model.add(MaxPooling2D(pool_size=(3,3), strides=(1,1)))
+model.add(MaxPooling2D(pool_size=(3,3)))
 model.add(Conv2D(16, (3, 1), padding='valid'))
 model.add(LeakyReLU(alpha=.001))
-model.add(MaxPooling2D(pool_size=(3,1), strides=(1,1)))
+model.add(MaxPooling2D(pool_size=(3,1)))
 model.add(Conv2D(16, (3, 1), padding='valid'))
 model.add(LeakyReLU(alpha=.001))
-model.add(MaxPooling2D(pool_size=(3,1), strides=(1,1)))
+model.add(MaxPooling2D(pool_size=(3,1)))
 
 # dense layers
+model.add(Flatten())
 model.add(Dropout(0.5))
 model.add(Dense(256))
 model.add(LeakyReLU(alpha=.001))
@@ -116,7 +118,7 @@ model.add(LeakyReLU(alpha=.001))
 model.add(Dropout(0.5))
 model.add(Dense(1, activation='sigmoid'))
 
-adam=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
+adam=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
 model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['acc'])
 
 model.summary()
@@ -124,11 +126,9 @@ model.summary()
 my_steps = np.round(14000.0 / BATCH_SIZE)
 my_val_steps = np.round(6000.0 / BATCH_SIZE)
 
-"""
 history = model.fit_generator(
     train_generator,
     steps_per_epoch=my_steps,
     epochs=EPOCH_SIZE,
     validation_data=validation_generator,
     validation_steps=my_val_steps)
-    """
