@@ -9,6 +9,7 @@ import csv
 import numpy as np
 
 from keras.layers import Conv2D, Dropout, MaxPooling2D, Dense, GlobalAveragePooling2D, Flatten
+from keras.models import Sequential
 from keras.losses import binary_crossentropy, mean_squared_error, mean_absolute_error
 
 SPECTPATH = '/audio/audio/workingfiles/spect/'
