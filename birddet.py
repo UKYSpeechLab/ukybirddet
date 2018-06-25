@@ -15,41 +15,45 @@ from keras.models import Sequential
 from keras.layers.advanced_activations import LeakyReLU
 from keras.losses import binary_crossentropy, mean_squared_error, mean_absolute_error
 
-SPECTPATH = '/audio/audio/workingfiles/spect/'
+SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
 # path to spectrogram files stored in separate directories for each dataset
 # -spect/
 #       BirdVox-DCASE-20k
 #       ff1010bird
 #       warblrb10k
 
-LABELPATH = 'labels/'
+LABELPATH = '/home/sidrah/DL/bulbul2018/labels/'
 # path to label files stored in a single directory named accordingly for each dataset
 # -labels/
 #       BirdVox-DCASE-20k.csv, ff1010bird.csv, warblrb10k.csv
 
-FILELIST = 'filelist/'
+FILELIST = '/home/sidrah/DL/bulbul2018/workingfiles/filelist/'
 # create this directory in main project directory
 
+#DATASET = 'BirdVox-DCASE-20k.csv'
 
-DATASET = 'BirdVox-DCASE-20k.csv'
-BATCH_SIZE = 64
-EPOCH_SIZE = 1500
+BATCH_SIZE = 32
+EPOCH_SIZE = 50
 shape = (700, 80)
 spect = np.zeros(shape)
 label = np.zeros(1)
 
 # filelist-can also be path
-def data_generator(filelistpth, batch_size=64, shuffle=False):
+def data_generator(filelistpth, batch_size=32, shuffle=False):
     batch_index = 0
     image_index = -1
     filelist = open(filelistpth, 'r')
     filenames = filelist.readlines()
     filelist.close()
 
-    labels_list = csv.reader(open(LABELPATH + DATASET, 'r'))
+    dataset = ['BirdVox-DCASE-20k.csv', 'ff1010bird.csv', 'warblrb10k.csv']
+
+    labels_list = []
     labels_dict = {}
-    for k, r, v in labels_list:
-        labels_dict[r + '/' + k + '.wav'] = v
+    for n in range(len(dataset)):
+        labels_list = csv.reader(open(LABELPATH + dataset[n], 'r'))
+        for k, r, v in labels_list:
+            labels_dict[r + '/' + k + '.wav'] = v
 
     while True:
         image_index = (image_index + 1) % len(filenames)
@@ -65,6 +69,10 @@ def data_generator(filelistpth, batch_size=64, shuffle=False):
         hf = h5py.File(SPECTPATH + file_id + '.h5', 'r')
         imagedata = hf.get('features')
         imagedata = np.array(imagedata)
+
+        # normalizing intensity values of spectrogram from [-15.0966 to 2.25745] to [0 to 1] range
+        imagedata = (imagedata + 15.0966)/(15.0966 + 2.25745)
+
         imagedata = np.reshape(imagedata, (imagedata.shape[0], imagedata.shape[1], 1))
 
         hf.close()
@@ -80,13 +88,17 @@ def data_generator(filelistpth, batch_size=64, shuffle=False):
             outputs = [label_batch]
             yield inputs, outputs
 
-train_generator = data_generator(FILELIST + 'train', 32, False)
-validation_generator = data_generator(FILELIST + 'test', 32, False)
+
+train_filelist=[FILELIST+'train_1']
+val_filelist=[FILELIST+'val_1']
+
+train_generator = data_generator(train_filelist, 32, False)
+validation_generator = data_generator(val_filelist, 32, False)
 
 model = Sequential()
 # augmentation layer
 # code from baseline : "augment:Rotation|augment:Shift(low=-1,high=1,axis=3)"
-# keras normalization layer : TO BE DONE
+# keras augmentation layer : TO BE DONE
 
 # normalization layer
 # code from baseline : "normpart="normalize:BatchNorm(axes=0x1x2,alpha=0.1,beta=None,gamma=None)"  # normalize over all except frequency axis"
