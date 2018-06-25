@@ -15,20 +15,22 @@ from keras.models import Sequential
 from keras.layers.advanced_activations import LeakyReLU
 from keras.losses import binary_crossentropy, mean_squared_error, mean_absolute_error
 
-#SPECTPATH = '/audio/audio/workingfiles/spect/'
-SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
+SPECTPATH = '/audio/audio/workingfiles/spect/'
+#SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
 # path to spectrogram files stored in separate directories for each dataset
 # -spect/
 #       BirdVox-DCASE-20k
 #       ff1010bird
 #       warblrb10k
 
-LABELPATH = '/home/sidrah/DL/bulbul2018/labels/'
+LABELPATH = '/audio/audio/labels/'
+#LABELPATH = '/home/sidrah/DL/bulbul2018/labels/'
 # path to label files stored in a single directory named accordingly for each dataset
 # -labels/
 #       BirdVox-DCASE-20k.csv, ff1010bird.csv, warblrb10k.csv
 
-FILELIST = '/home/sidrah/DL/bulbul2018/workingfiles/filelists/'
+FILELIST = '/audio/audio/workingfiles/filelists/'
+#FILELIST = '/home/sidrah/DL/bulbul2018/workingfiles/filelists/'
 # create this directory in main project directory
 
 #DATASET = 'BirdVox-DCASE-20k.csv'
