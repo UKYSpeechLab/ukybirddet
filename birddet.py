@@ -15,19 +15,20 @@ from keras.models import Sequential
 from keras.layers.advanced_activations import LeakyReLU
 from keras.losses import binary_crossentropy, mean_squared_error, mean_absolute_error
 
-SPECTPATH = '/audio/audio/workingfiles/spect/'
+#SPECTPATH = '/audio/audio/workingfiles/spect/'
+SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
 # path to spectrogram files stored in separate directories for each dataset
 # -spect/
 #       BirdVox-DCASE-20k
 #       ff1010bird
 #       warblrb10k
 
-LABELPATH = '/audio/audio/labels/'
+LABELPATH = '/home/sidrah/DL/bulbul2018/labels/'
 # path to label files stored in a single directory named accordingly for each dataset
 # -labels/
 #       BirdVox-DCASE-20k.csv, ff1010bird.csv, warblrb10k.csv
 
-FILELIST = '/audio/audio/workingfiles/filelist/'
+FILELIST = '/home/sidrah/DL/bulbul2018/workingfiles/filelists/'
 # create this directory in main project directory
 
 #DATASET = 'BirdVox-DCASE-20k.csv'
@@ -135,8 +136,8 @@ model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['acc'])
 
 model.summary()
 
-my_steps = np.round(14000.0 / BATCH_SIZE)
-my_val_steps = np.round(6000.0 / BATCH_SIZE)
+my_steps = np.round(16000.0 / BATCH_SIZE)
+my_val_steps = np.round(1000.0 / BATCH_SIZE)
 
 history = model.fit_generator(
     train_generator,
@@ -144,3 +145,4 @@ history = model.fit_generator(
     epochs=EPOCH_SIZE,
     validation_data=validation_generator,
     validation_steps=my_val_steps)
+
