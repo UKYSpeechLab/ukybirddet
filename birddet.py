@@ -45,7 +45,7 @@ label = np.zeros(1)
 def data_generator(filelistpath, batch_size=32, shuffle=False):
     batch_index = 0
     image_index = -1
-    filelist = open(filelistpath, 'r')
+    filelist = open('/audio/audio/workingfiles/filelists/train_B', 'r')
     filenames = filelist.readlines()
     filelist.close()
 
@@ -92,10 +92,10 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
             yield inputs, outputs
 
 
-#train_filelist=[FILELIST+'train_B']
-#val_filelist=[FILELIST+'val_B']
-train_filelist=['/audio/audio/workingfiles/filelists/train_B']
-val_filelist=['/audio/audio/workingfiles/filelists/val_B']
+train_filelist=[FILELIST+'train_B']
+val_filelist=[FILELIST+'val_B']
+#train_filelist=['/audio/audio/workingfiles/filelists/train_B']
+#val_filelist=['/audio/audio/workingfiles/filelists/val_B']
 
 train_generator = data_generator(train_filelist, 32, False)
 validation_generator = data_generator(val_filelist, 32, False)
