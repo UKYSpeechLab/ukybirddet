@@ -15,19 +15,19 @@ from keras.models import Sequential
 from keras.layers.advanced_activations import LeakyReLU
 from keras.losses import binary_crossentropy, mean_squared_error, mean_absolute_error
 
-SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
+SPECTPATH = '/audio/audio/workingfiles/spect/'
 # path to spectrogram files stored in separate directories for each dataset
 # -spect/
 #       BirdVox-DCASE-20k
 #       ff1010bird
 #       warblrb10k
 
-LABELPATH = '/home/sidrah/DL/bulbul2018/labels/'
+LABELPATH = '/audio/audio/labels/'
 # path to label files stored in a single directory named accordingly for each dataset
 # -labels/
 #       BirdVox-DCASE-20k.csv, ff1010bird.csv, warblrb10k.csv
 
-FILELIST = '/home/sidrah/DL/bulbul2018/workingfiles/filelist/'
+FILELIST = '/audio/audio/workingfiles/filelist/'
 # create this directory in main project directory
 
 #DATASET = 'BirdVox-DCASE-20k.csv'
@@ -89,8 +89,8 @@ def data_generator(filelistpth, batch_size=32, shuffle=False):
             yield inputs, outputs
 
 
-train_filelist=[FILELIST+'train_1']
-val_filelist=[FILELIST+'val_1']
+train_filelist=[FILELIST+'train_B']
+val_filelist=[FILELIST+'val_B']
 
 train_generator = data_generator(train_filelist, 32, False)
 validation_generator = data_generator(val_filelist, 32, False)
