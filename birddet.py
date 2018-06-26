@@ -35,7 +35,7 @@ FILELIST = '/audio/audio/workingfiles/filelists/'
 
 #DATASET = 'BirdVox-DCASE-20k.csv'
 
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 EPOCH_SIZE = 50
 shape = (700, 80)
 spect = np.zeros(shape)
@@ -97,8 +97,8 @@ val_filelist=[FILELIST+'val_F']
 #train_filelist=['/audio/audio/workingfiles/filelists/train_B']
 #val_filelist=['/audio/audio/workingfiles/filelists/val_B']
 
-train_generator = data_generator(train_filelist, 32, False)
-validation_generator = data_generator(val_filelist, 32, False)
+train_generator = data_generator(train_filelist, BATCH_SIZE, False)
+validation_generator = data_generator(val_filelist, BATCH_SIZE, False)
 
 model = Sequential()
 # augmentation layer
