@@ -55,7 +55,7 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
     labels_dict = {}
     for n in range(len(dataset)):
         labels_list = csv.reader(open(LABELPATH + dataset[n], 'r'))
-        next(dataset)
+        next(labels_list)
         for k, r, v in labels_list:
             labels_dict[r + '/' + k + '.wav'] = v
 
