@@ -10,7 +10,7 @@ import numpy as np
 
 import keras
 from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import Conv2D, Dropout, MaxPooling2D, Dense, GlobalAveragePooling2D, Flatten
+from keras.layers import Conv2D, Dropout, MaxPooling2D, Dense, GlobalAveragePooling2D, Flatten, BatchNormalization
 from keras.models import Sequential
 from keras.layers.advanced_activations import LeakyReLU
 from keras.losses import binary_crossentropy, mean_squared_error, mean_absolute_error
@@ -35,7 +35,7 @@ FILELIST = '/audio/audio/workingfiles/filelists/'
 
 #DATASET = 'BirdVox-DCASE-20k.csv'
 
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 EPOCH_SIZE = 50
 shape = (700, 80)
 spect = np.zeros(shape)
@@ -45,7 +45,7 @@ label = np.zeros(1)
 def data_generator(filelistpath, batch_size=32, shuffle=False):
     batch_index = 0
     image_index = -1
-    filelist = open('/audio/audio/workingfiles/filelists/train_B', 'r')
+    filelist = open(filelistpath[0], 'r')
     filenames = filelist.readlines()
     filelist.close()
 
@@ -55,6 +55,7 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
     labels_dict = {}
     for n in range(len(dataset)):
         labels_list = csv.reader(open(LABELPATH + dataset[n], 'r'))
+        next(dataset)
         for k, r, v in labels_list:
             labels_dict[r + '/' + k + '.wav'] = v
 
@@ -91,9 +92,8 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
             outputs = [label_batch]
             yield inputs, outputs
 
-
-train_filelist=[FILELIST+'train_B']
-val_filelist=[FILELIST+'val_B']
+train_filelist=[FILELIST+'train_F']
+val_filelist=[FILELIST+'val_F']
 #train_filelist=['/audio/audio/workingfiles/filelists/train_B']
 #val_filelist=['/audio/audio/workingfiles/filelists/val_B']
 
@@ -128,20 +128,22 @@ model.add(MaxPooling2D(pool_size=(3,1)))
 model.add(Flatten())
 model.add(Dropout(0.5))
 model.add(Dense(256))
+model.add(BatchNormalization())
 model.add(LeakyReLU(alpha=.001))
 model.add(Dropout(0.5))
 model.add(Dense(32))
+model.add(BatchNormalization())
 model.add(LeakyReLU(alpha=.001))
 model.add(Dropout(0.5))
-model.add(Dense(1, activation='sigmoid'))
+model.add(Dense(1,activation='sigmoid'))
 
 adam=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
 model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['acc'])
 
 model.summary()
 
-my_steps = np.round(16000.0 / BATCH_SIZE)
-my_val_steps = np.round(1000.0 / BATCH_SIZE)
+my_steps = np.round(6152.0 / BATCH_SIZE)
+my_val_steps = np.round(385.0 / BATCH_SIZE)
 
 history = model.fit_generator(
     train_generator,
