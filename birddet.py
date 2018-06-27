@@ -93,8 +93,7 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
 
         for n in range(AUGMENT_SIZE):
             batch_index += 1
-            print('batch_index' + str(batch_index))
-            print(str(file_id))
+            
             if batch_index >= batch_size:
                 batch_index = 0
             x_batch, y_batch = gen_img.next()
