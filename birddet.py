@@ -7,12 +7,14 @@
 import h5py
 import csv
 import numpy as np
+import random
+import PIL.Image
 
 import keras
-from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import Conv2D, Dropout, MaxPooling2D, Dense, GlobalAveragePooling2D, Flatten, BatchNormalization
 from keras.models import Sequential
 from keras.layers.advanced_activations import LeakyReLU
+from keras.preprocessing.image import ImageDataGenerator
 from keras.losses import binary_crossentropy, mean_squared_error, mean_absolute_error
 
 SPECTPATH = '/audio/audio/workingfiles/spect/'
@@ -37,17 +39,21 @@ FILELIST = '/audio/audio/workingfiles/filelists/'
 
 BATCH_SIZE = 32
 EPOCH_SIZE = 50
+AUGMENT_SIZE = 32
 shape = (700, 80)
 spect = np.zeros(shape)
 label = np.zeros(1)
 
-# filelist-can also be path
 def data_generator(filelistpath, batch_size=32, shuffle=False):
     batch_index = 0
     image_index = -1
     filelist = open(filelistpath[0], 'r')
     filenames = filelist.readlines()
     filelist.close()
+
+    # shuffling filelist
+    if shuffle==True:
+        random.shuffle(filenames)
 
     dataset = ['BirdVox-DCASE-20k.csv', 'ff1010bird.csv', 'warblrb10k.csv']
 
@@ -61,6 +67,7 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
 
     while True:
         image_index = (image_index + 1) % len(filenames)
+
         # if shuffle and image_index = 0
         # write code for shuffling filelist
         file_id = filenames[image_index].rstrip()
@@ -73,13 +80,67 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
         hf = h5py.File(SPECTPATH + file_id + '.h5', 'r')
         imagedata = hf.get('features')
         imagedata = np.array(imagedata)
-
+        hf.close()
         # normalizing intensity values of spectrogram from [-15.0966 to 2.25745] to [0 to 1] range
         imagedata = (imagedata + 15.0966)/(15.0966 + 2.25745)
 
-        imagedata = np.reshape(imagedata, (imagedata.shape[0], imagedata.shape[1], 1))
+        imagedata = np.reshape(imagedata, (1, imagedata.shape[0], imagedata.shape[1], 1))
 
+        spect_batch[batch_index, :, :, :] = imagedata
+        label_batch[batch_index, :] = labels_dict[file_id]
+
+        gen_img = datagen.flow(imagedata, label_batch[batch_index, :], batch_size=BATCH_SIZE, shuffle=False, save_to_dir=None)
+
+        for n in range(AUGMENT_SIZE):
+            batch_index += 1
+            print('batch_index' + str(batch_index))
+            print(str(file_id))
+            if batch_index >= batch_size:
+                batch_index = 0
+            x_batch, y_batch = gen_img.next()
+            yield x_batch, y_batch
+
+def dataval_generator(filelistpath, batch_size=32, shuffle=False):
+    batch_index = 0
+    image_index = -1
+    filelist = open(filelistpath[0], 'r')
+    filenames = filelist.readlines()
+    filelist.close()
+
+    # shuffling filelist
+    if shuffle == True:
+        random.shuffle(filenames)
+
+    dataset = ['BirdVox-DCASE-20k.csv', 'ff1010bird.csv', 'warblrb10k.csv']
+
+    labels_list = []
+    labels_dict = {}
+    for n in range(len(dataset)):
+        labels_list = csv.reader(open(LABELPATH + dataset[n], 'r'))
+        next(labels_list)
+        for k, r, v in labels_list:
+            labels_dict[r + '/' + k + '.wav'] = v
+
+    while True:
+        image_index = (image_index + 1) % len(filenames)
+
+        # if shuffle and image_index = 0
+        # write code for shuffling filelist
+        file_id = filenames[image_index].rstrip()
+
+        if batch_index == 0:
+            # re-initialize spectrogram and label batch
+            spect_batch = np.zeros([batch_size, spect.shape[0], spect.shape[1], 1])
+            label_batch = np.zeros([batch_size, 1])
+
+        hf = h5py.File(SPECTPATH + file_id + '.h5', 'r')
+        imagedata = hf.get('features')
+        imagedata = np.array(imagedata)
         hf.close()
+        # normalizing intensity values of spectrogram from [-15.0966 to 2.25745] to [0 to 1] range
+        imagedata = (imagedata + 15.0966) / (15.0966 + 2.25745)
+
+        imagedata = np.reshape(imagedata, (1, imagedata.shape[0], imagedata.shape[1], 1))
 
         spect_batch[batch_index, :, :, :] = imagedata
         label_batch[batch_index, :] = labels_dict[file_id]
@@ -88,39 +149,49 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
 
         if batch_index >= batch_size:
             batch_index = 0
-            inputs = [spect_batch]
-            outputs = [label_batch]
-            yield inputs, outputs
+        inputs = [spect_batch]
+        outputs = [label_batch]
+        yield inputs, outputs
 
-train_filelist=[FILELIST+'train_F']
-val_filelist=[FILELIST+'val_F']
+train_filelist=[FILELIST+'train_B']
+val_filelist=[FILELIST+'val_B']
 #train_filelist=['/audio/audio/workingfiles/filelists/train_B']
 #val_filelist=['/audio/audio/workingfiles/filelists/val_B']
 
-train_generator = data_generator(train_filelist, BATCH_SIZE, False)
-validation_generator = data_generator(val_filelist, BATCH_SIZE, False)
+train_generator = data_generator(train_filelist, BATCH_SIZE, True)
+validation_generator = dataval_generator(val_filelist, BATCH_SIZE, True)
+
+datagen = ImageDataGenerator(
+    featurewise_center=False,
+    featurewise_std_normalization=False,
+    rotation_range=0,
+    width_shift_range=0.05,
+    height_shift_range=0.9,
+    horizontal_flip=False,
+    fill_mode="wrap")
 
 model = Sequential()
-# augmentation layer
+# augmentation generator
 # code from baseline : "augment:Rotation|augment:Shift(low=-1,high=1,axis=3)"
-# keras augmentation layer : TO BE DONE
+# keras augmentation:
+#preprocessing_function
 
-# normalization layer
-# code from baseline : "normpart="normalize:BatchNorm(axes=0x1x2,alpha=0.1,beta=None,gamma=None)"  # normalize over all except frequency axis"
-# keras normalization layer:
-# keras.layers.normalization.BatchNormalization(epsilon=1e-06, mode=0, axis=-1, momentum=0.9, weights=None, beta_init='zero', gamma_init='one')
 
 # convolution layers
 model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(700, 80, 1)))
+model.add(BatchNormalization())
 model.add(LeakyReLU(alpha=.001))
 model.add(MaxPooling2D(pool_size=(3,3)))
 model.add(Conv2D(16, (3, 3), padding='valid'))
+model.add(BatchNormalization())
 model.add(LeakyReLU(alpha=.001))
 model.add(MaxPooling2D(pool_size=(3,3)))
 model.add(Conv2D(16, (3, 1), padding='valid'))
+model.add(BatchNormalization())
 model.add(LeakyReLU(alpha=.001))
 model.add(MaxPooling2D(pool_size=(3,1)))
 model.add(Conv2D(16, (3, 1), padding='valid'))
+model.add(BatchNormalization())
 model.add(LeakyReLU(alpha=.001))
 model.add(MaxPooling2D(pool_size=(3,1)))
 
@@ -142,8 +213,9 @@ model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['acc'])
 
 model.summary()
 
-my_steps = np.round(6152.0 / BATCH_SIZE)
-my_val_steps = np.round(385.0 / BATCH_SIZE)
+my_steps = np.round(16000.0 / BATCH_SIZE)
+my_val_steps = np.round(1000.0 / BATCH_SIZE)
+
 
 history = model.fit_generator(
     train_generator,
@@ -151,4 +223,5 @@ history = model.fit_generator(
     epochs=EPOCH_SIZE,
     validation_data=validation_generator,
     validation_steps=my_val_steps)
+
 
