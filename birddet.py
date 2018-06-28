@@ -93,7 +93,7 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
 
         for n in range(AUGMENT_SIZE):
             batch_index += 1
-            
+
             if batch_index >= batch_size:
                 batch_index = 0
             x_batch, y_batch = gen_img.next()
@@ -122,7 +122,7 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
 
     while True:
         image_index = (image_index + 1) % len(filenames)
-
+        print("img#:"+str(image_index))
         # if shuffle and image_index = 0
         # write code for shuffling filelist
         file_id = filenames[image_index].rstrip()
@@ -148,9 +148,9 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
 
         if batch_index >= batch_size:
             batch_index = 0
-        inputs = [spect_batch]
-        outputs = [label_batch]
-        yield inputs, outputs
+            inputs = [spect_batch]
+            outputs = [label_batch]
+            yield inputs, outputs
 
 train_filelist=[FILELIST+'train_B']
 val_filelist=[FILELIST+'val_B']
