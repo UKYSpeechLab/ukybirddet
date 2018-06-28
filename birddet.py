@@ -161,7 +161,7 @@ val_filelist=[FILELIST+'val_B']
 #train_filelist=['/audio/audio/workingfiles/filelists/train_B']
 #val_filelist=['/audio/audio/workingfiles/filelists/val_B']
 
-train_generator = data_generator(train_filelist, BATCH_SIZE, True)
+train_generator = dataval_generator(train_filelist, BATCH_SIZE, True)
 validation_generator = dataval_generator(val_filelist, BATCH_SIZE, True)
 
 datagen = ImageDataGenerator(
