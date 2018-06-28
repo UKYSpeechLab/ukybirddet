@@ -102,6 +102,7 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
 def dataval_generator(filelistpath, batch_size=32, shuffle=False):
     batch_index = 0
     image_index = -1
+    valgencounter=0
     filelist = open(filelistpath[0], 'r')
     filenames = filelist.readlines()
     filelist.close()
@@ -145,11 +146,14 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
         label_batch[batch_index, :] = labels_dict[file_id]
 
         batch_index += 1
+        valgencounter +=1
 
         if batch_index >= batch_size:
             batch_index = 0
             inputs = [spect_batch]
             outputs = [label_batch]
+            print('val-gen-id'+ str(image_index))
+            print('valgencounter='+str(valgencounter))
             yield inputs, outputs
 
 train_filelist=[FILELIST+'train_B']
