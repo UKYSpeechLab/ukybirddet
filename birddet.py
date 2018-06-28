@@ -157,12 +157,12 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
             outputs = [label_batch]
             yield inputs, outputs
 
-train_filelist=[FILELIST+'train_B']
-val_filelist=[FILELIST+'val_B']
+train_filelist=[FILELIST+'train_F']
+val_filelist=[FILELIST+'val_F']
 #train_filelist=['/audio/audio/workingfiles/filelists/train_B']
 #val_filelist=['/audio/audio/workingfiles/filelists/val_B']
 
-train_generator = data_generator(train_filelist, BATCH_SIZE, True)
+train_generator = dataval_generator(train_filelist, BATCH_SIZE, True)
 validation_generator = dataval_generator(val_filelist, BATCH_SIZE, True)
 
 datagen = ImageDataGenerator(
@@ -216,8 +216,8 @@ model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['acc'])
 
 model.summary()
 
-my_steps = np.round(16000.0 / BATCH_SIZE)
-my_val_steps = np.round(1000.0 / BATCH_SIZE)
+my_steps = np.round(6152.0 / BATCH_SIZE)
+my_val_steps = np.round(385.0 / BATCH_SIZE)
 
 
 history = model.fit_generator(
