@@ -93,18 +93,20 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
 
         gen_img = datagen.flow(imagedata, label_batch[0, :], batch_size=BATCH_SIZE, shuffle=False, save_to_dir=None)
 
-        #for n in range(AUGMENT_SIZE):
-        #batch_index += 1
+        for n in range(AUGMENT_SIZE):
+            aug_spect_batch[batch_index, :, :, :], aug_label_batch[batch_index, :] = gen_img.next()
+            batch_index += 1
+            if batch_index >= batch_size:
+                batch_index = 0
+                inputs = [aug_spect_batch]
+                outputs = [aug_label_batch]
+                yield inputs, outputs
 
-        #if batch_index >= batch_size:
-        #batch_index = 0
-        aug_spect_batch, aug_label_batch = gen_img.next()
-        yield aug_spect_batch, aug_label_batch
 
 def dataval_generator(filelistpath, batch_size=32, shuffle=False):
     batch_index = 0
     image_index = -1
-    valgencounter=0
+
     filelist = open(filelistpath[0], 'r')
     filenames = filelist.readlines()
     filelist.close()
@@ -147,7 +149,7 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
         label_batch[batch_index, :] = labels_dict[file_id]
 
         batch_index += 1
-        valgencounter +=1
+
 
         if batch_index >= batch_size:
             batch_index = 0
@@ -177,7 +179,6 @@ model = Sequential()
 # code from baseline : "augment:Rotation|augment:Shift(low=-1,high=1,axis=3)"
 # keras augmentation:
 #preprocessing_function
-
 
 # convolution layers
 model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(700, 80, 1)))
