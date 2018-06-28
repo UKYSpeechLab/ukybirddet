@@ -39,7 +39,7 @@ FILELIST = '/audio/audio/workingfiles/filelists/'
 
 BATCH_SIZE = 32
 EPOCH_SIZE = 50
-AUGMENT_SIZE = 32
+AUGMENT_SIZE = 16
 shape = (700, 80)
 spect = np.zeros(shape)
 label = np.zeros(1)
@@ -91,9 +91,12 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
         spect_batch[0, :, :, :] = imagedata
         label_batch[0, :] = labels_dict[file_id]
 
-        gen_img = datagen.flow(imagedata, label_batch[0, :], batch_size=BATCH_SIZE, shuffle=False, save_to_dir=None)
+        gen_img = datagen.flow(imagedata, label_batch[0, :], batch_size=1, shuffle=False, save_to_dir='augimg/')
+        aug_spect_batch[batch_index, :, :, :] = imagedata
+        aug_label_batch[batch_index, :] = label_batch[0, :]
+        batch_index += 1
 
-        for n in range(AUGMENT_SIZE):
+        for n in range(AUGMENT_SIZE-1):
             aug_spect_batch[batch_index, :, :, :], aug_label_batch[batch_index, :] = gen_img.next()
             batch_index += 1
             if batch_index >= batch_size:
@@ -157,13 +160,15 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
             outputs = [label_batch]
             yield inputs, outputs
 
-train_filelist=[FILELIST+'train_F']
-val_filelist=[FILELIST+'val_F']
+train_filelist=[FILELIST+'train_B']
+val_filelist=[FILELIST+'val_B']
+test_filelist=[FILELIST+'test_B']
 #train_filelist=['/audio/audio/workingfiles/filelists/train_B']
 #val_filelist=['/audio/audio/workingfiles/filelists/val_B']
 
-train_generator = dataval_generator(train_filelist, BATCH_SIZE, True)
+train_generator = data_generator(train_filelist, BATCH_SIZE, True)
 validation_generator = dataval_generator(val_filelist, BATCH_SIZE, True)
+test_generator = dataval_generator(test_filelist, BATCH_SIZE, False)
 
 datagen = ImageDataGenerator(
     featurewise_center=False,
@@ -216,9 +221,9 @@ model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['acc'])
 
 model.summary()
 
-my_steps = np.round(6152.0 / BATCH_SIZE)
-my_val_steps = np.round(385.0 / BATCH_SIZE)
-
+my_steps = np.round(16000.0*AUGMENT_SIZE / BATCH_SIZE)
+my_val_steps = np.round(1000.0 / BATCH_SIZE)
+my_test_steps = np.round(3000.0 / BATCH_SIZE)
 
 history = model.fit_generator(
     train_generator,
@@ -226,5 +231,9 @@ history = model.fit_generator(
     epochs=EPOCH_SIZE,
     validation_data=validation_generator,
     validation_steps=my_val_steps)
+
+model.evaluate_generator(
+    test_generator,
+    steps=my_test_steps)
 
 
