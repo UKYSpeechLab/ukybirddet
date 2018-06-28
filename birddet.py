@@ -91,7 +91,7 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
         spect_batch[0, :, :, :] = imagedata
         label_batch[0, :] = labels_dict[file_id]
 
-        gen_img = datagen.flow(imagedata, label_batch[0, :], batch_size=1, shuffle=False, save_to_dir='augimg/')
+        gen_img = datagen.flow(imagedata, label_batch[0, :], batch_size=1, shuffle=False, save_to_dir=None)
         aug_spect_batch[batch_index, :, :, :] = imagedata
         aug_label_batch[batch_index, :] = label_batch[0, :]
         batch_index += 1
