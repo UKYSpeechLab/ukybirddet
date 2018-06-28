@@ -74,8 +74,10 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
 
         if batch_index == 0:
             # re-initialize spectrogram and label batch
-            spect_batch = np.zeros([batch_size, spect.shape[0], spect.shape[1], 1])
-            label_batch = np.zeros([batch_size, 1])
+            spect_batch = np.zeros([1, spect.shape[0], spect.shape[1], 1])
+            label_batch = np.zeros([1, 1])
+            aug_spect_batch = np.zeros([batch_size, spect.shape[0], spect.shape[1], 1])
+            aug_label_batch = np.zeros([batch_size, 1])
 
         hf = h5py.File(SPECTPATH + file_id + '.h5', 'r')
         imagedata = hf.get('features')
@@ -86,18 +88,18 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
 
         imagedata = np.reshape(imagedata, (1, imagedata.shape[0], imagedata.shape[1], 1))
 
-        spect_batch[batch_index, :, :, :] = imagedata
-        label_batch[batch_index, :] = labels_dict[file_id]
+        spect_batch[0, :, :, :] = imagedata
+        label_batch[0, :] = labels_dict[file_id]
 
-        gen_img = datagen.flow(imagedata, label_batch[batch_index, :], batch_size=BATCH_SIZE, shuffle=False, save_to_dir=None)
+        gen_img = datagen.flow(imagedata, label_batch[0, :], batch_size=BATCH_SIZE, shuffle=False, save_to_dir=None)
 
-        for n in range(AUGMENT_SIZE):
-            batch_index += 1
+        #for n in range(AUGMENT_SIZE):
+        #batch_index += 1
 
-            if batch_index >= batch_size:
-                batch_index = 0
-            x_batch, y_batch = gen_img.next()
-            yield x_batch, y_batch
+        #if batch_index >= batch_size:
+        #batch_index = 0
+        aug_spect_batch, aug_label_batch = gen_img.next()
+        yield aug_spect_batch, aug_label_batch
 
 def dataval_generator(filelistpath, batch_size=32, shuffle=False):
     batch_index = 0
@@ -123,7 +125,6 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
 
     while True:
         image_index = (image_index + 1) % len(filenames)
-        print("img#:"+str(image_index))
         # if shuffle and image_index = 0
         # write code for shuffling filelist
         file_id = filenames[image_index].rstrip()
@@ -152,8 +153,6 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
             batch_index = 0
             inputs = [spect_batch]
             outputs = [label_batch]
-            print('val-gen-id'+ str(image_index))
-            print('valgencounter='+str(valgencounter))
             yield inputs, outputs
 
 train_filelist=[FILELIST+'train_B']
@@ -161,7 +160,7 @@ val_filelist=[FILELIST+'val_B']
 #train_filelist=['/audio/audio/workingfiles/filelists/train_B']
 #val_filelist=['/audio/audio/workingfiles/filelists/val_B']
 
-train_generator = dataval_generator(train_filelist, BATCH_SIZE, True)
+train_generator = data_generator(train_filelist, BATCH_SIZE, True)
 validation_generator = dataval_generator(val_filelist, BATCH_SIZE, True)
 
 datagen = ImageDataGenerator(
