@@ -1,8 +1,6 @@
 # DCASE 2018 - Bird Audio Detection challenge (Task 3)
 
 # This code is a basic implementation of bird audio detector (based on baseline code's architecture)
-# This code performs three-fold crossvalidation checks performance of bird detector on a single dataset BirdVox20k
-# AUC score calculation not added yet.
 
 import h5py
 import csv
@@ -25,12 +23,31 @@ from keras.callbacks import ReduceLROnPlateau
 from keras.callbacks import CSVLogger
 from keras.callbacks import EarlyStopping
 
-reduceLR = ReduceLROnPlateau(factor=0.2, patience=2, min_lr=0.00001)
-checkPoint = ModelCheckpoint(filepath = 'FandB_cfg4_noaug_ckpt.h5', save_best_only=True)
-csvLogger = CSVLogger('trainingF_ROC_B_noaug.log', separator=',', append=False)
-#earlyStopping = EarlyStopping(patience=5)
-#callbacks= [myCheckPoint, reduce_lr, earlyStopping],
+logfile_name = 'trainingF_ROC_B_noaug.log'
+checkpoint_model_name = 'FandB_cfg4_noaug_ckpt.h5'
+final_model_name = 'FandB_cfg4_noaugm_flmdl.h5'
 
+BATCH_SIZE = 32
+EPOCH_SIZE = 30
+AUGMENT_SIZE = 8
+
+train_files = 'train_F'
+TRAIN_SIZE = 6152.0
+
+val_files = 'val_F'
+VAL_SIZE = 385.0
+
+test_files = 'test_B'
+TEST_SIZE = 3000.0
+
+shape = (700, 80)
+spect = np.zeros(shape)
+label = np.zeros(1)
+
+reduceLR = ReduceLROnPlateau(factor=0.2, patience=2, min_lr=0.00001)
+checkPoint = ModelCheckpoint(filepath = checkpoint_model_name, save_best_only=True)
+csvLogger = CSVLogger(logfile_name, separator=',', append=False)
+#earlyStopping = EarlyStopping(patience=5)
 
 SPECTPATH = '/audio/audio/workingfiles/spect/'
 #SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
@@ -52,18 +69,6 @@ FILELIST = '/audio/audio/workingfiles/filelists/'
 #FILELIST = '/home/sidrah/DL/bulbul2018/workingfiles/filelists/'
 #FILELIST = 'C:\Sidrah\DCASE2018\dataset\filelists'
 # create this directory in main project directory
-
-#DATASET = 'BirdVox-DCASE-20k.csv'
-
-BATCH_SIZE = 32
-EPOCH_SIZE = 30
-AUGMENT_SIZE = 8
-shape = (700, 80)
-spect = np.zeros(shape)
-label = np.zeros(1)
-TRAIN_SIZE = 6152.0
-VAL_SIZE = 385.0
-TEST_SIZE = 3000.0
 
 # use this generator when augmentation is needed
 def data_generator(filelistpath, batch_size=32, shuffle=False):
@@ -211,14 +216,12 @@ def testdata(filelistpath, test_size):
 
     return outputs
 
-train_filelist=[FILELIST+'train_F']
-val_filelist=[FILELIST+'val_F']
-test_filelist=[FILELIST+'test_B']
-#train_filelist=['/audio/audio/workingfiles/filelists/train_B']
-#val_filelist=['/audio/audio/workingfiles/filelists/val_B']
+train_filelist=[FILELIST+train_files]
+val_filelist=[FILELIST+val_files]
+test_filelist=[FILELIST+test_files]
 
-train_generator = dataval_generator(train_filelist, BATCH_SIZE, True)
-validation_generator = dataval_generator(val_filelist, BATCH_SIZE, True)
+train_generator = data_generator(train_filelist, BATCH_SIZE, True)
+validation_generator = dataval_generator(val_filelist, BATCH_SIZE, False)
 test_generator = dataval_generator(test_filelist, BATCH_SIZE, False)
 
 datagen = ImageDataGenerator(
@@ -288,7 +291,7 @@ history = model.fit_generator(
     callbacks= [checkPoint, reduceLR, csvLogger],
     verbose=True)
 
-model.save('FandB_cfg4_noaugm_flmdl.h5')
+model.save(final_model_name)
 
 # generating prediction values for computing ROC_AUC score
 
