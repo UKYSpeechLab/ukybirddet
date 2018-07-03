@@ -10,12 +10,27 @@ import numpy as np
 import random
 import PIL.Image
 
+from sklearn.metrics import roc_auc_score
+
 import keras
 from keras.layers import Conv2D, Dropout, MaxPooling2D, Dense, GlobalAveragePooling2D, Flatten, BatchNormalization
 from keras.models import Sequential
 from keras.layers.advanced_activations import LeakyReLU
 from keras.preprocessing.image import ImageDataGenerator
 from keras.losses import binary_crossentropy, mean_squared_error, mean_absolute_error
+
+import my_callbacks
+from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ReduceLROnPlateau
+from keras.callbacks import CSVLogger
+from keras.callbacks import EarlyStopping
+
+reduceLR = ReduceLROnPlateau(factor=0.2, patience=2, min_lr=0.00001)
+checkPoint = ModelCheckpoint(filepath = 'B_cfg4_noaug.h5', save_best_only=True)
+csvLogger = CSVLogger('training.log', separator=',', append=False)
+#earlyStopping = EarlyStopping(patience=5)
+#callbacks= [myCheckPoint, reduce_lr, earlyStopping],
+
 
 SPECTPATH = '/audio/audio/workingfiles/spect/'
 #SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
@@ -39,11 +54,15 @@ FILELIST = '/audio/audio/workingfiles/filelists/'
 
 BATCH_SIZE = 32
 EPOCH_SIZE = 50
-AUGMENT_SIZE = 16
+AUGMENT_SIZE = 1
 shape = (700, 80)
 spect = np.zeros(shape)
 label = np.zeros(1)
+TRAIN_SIZE = 16000.0
+VAL_SIZE = 1000.0
+TEST_SIZE = 3000.0
 
+# use this generator when augmentation is needed
 def data_generator(filelistpath, batch_size=32, shuffle=False):
     batch_index = 0
     image_index = -1
@@ -105,7 +124,7 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
                 outputs = [aug_label_batch]
                 yield inputs, outputs
 
-
+# use this generator when augmentation is not needed
 def dataval_generator(filelistpath, batch_size=32, shuffle=False):
     batch_index = 0
     image_index = -1
@@ -160,13 +179,54 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
             outputs = [label_batch]
             yield inputs, outputs
 
+def testdata(filelistpath, test_size):
+    image_index = -1
+
+    filelist = open(filelistpath[0], 'r')
+    filenames = filelist.readlines()
+    filelist.close()
+
+    dataset = ['BirdVox-DCASE-20k.csv', 'ff1010bird.csv', 'warblrb10k.csv']
+
+    labels_dict = {}
+    for n in range(len(dataset)):
+        labels_list = csv.reader(open(LABELPATH + dataset[n], 'r'))
+        next(labels_list)
+        for k, r, v in labels_list:
+            labels_dict[r + '/' + k + '.wav'] = v
+
+    spect_batch = np.zeros([test_size, spect.shape[0], spect.shape[1], 1])
+    label_batch = np.zeros([test_size, 1])
+
+    for m in range(len(filenames)):
+        image_index = (image_index + 1) % len(filenames)
+
+        file_id = filenames[image_index].rstrip()
+
+        hf = h5py.File(SPECTPATH + file_id + '.h5', 'r')
+        imagedata = hf.get('features')
+        imagedata = np.array(imagedata)
+        hf.close()
+
+        # normalizing intensity values of spectrogram from [-15.0966 to 2.25745] to [0 to 1] range
+        imagedata = (imagedata + 15.0966) / (15.0966 + 2.25745)
+        imagedata = np.reshape(imagedata, (1, imagedata.shape[0], imagedata.shape[1], 1))
+
+        spect_batch[image_index, :, :, :] = imagedata
+        label_batch[image_index, :] = labels_dict[file_id]
+
+        inputs = [spect_batch]
+        outputs = [label_batch]
+
+    return inputs, outputs
+
 train_filelist=[FILELIST+'train_B']
 val_filelist=[FILELIST+'val_B']
 test_filelist=[FILELIST+'test_B']
 #train_filelist=['/audio/audio/workingfiles/filelists/train_B']
 #val_filelist=['/audio/audio/workingfiles/filelists/val_B']
 
-train_generator = data_generator(train_filelist, BATCH_SIZE, True)
+train_generator = dataval_generator(train_filelist, BATCH_SIZE, True)
 validation_generator = dataval_generator(val_filelist, BATCH_SIZE, True)
 test_generator = dataval_generator(test_filelist, BATCH_SIZE, False)
 
@@ -219,21 +279,38 @@ model.add(Dense(1,activation='sigmoid'))
 adam=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
 model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['acc'])
 
+# prepare callback
+histories = my_callbacks.Histories()
+
 model.summary()
 
-my_steps = np.round(16000.0*AUGMENT_SIZE / BATCH_SIZE)
-my_val_steps = np.round(1000.0 / BATCH_SIZE)
-my_test_steps = np.round(3000.0 / BATCH_SIZE)
+my_steps = np.floor(TRAIN_SIZE*AUGMENT_SIZE / BATCH_SIZE)
+my_val_steps = np.floor(VAL_SIZE / BATCH_SIZE)
+my_test_steps = np.floor(TEST_SIZE / BATCH_SIZE)
 
 history = model.fit_generator(
     train_generator,
     steps_per_epoch=my_steps,
     epochs=EPOCH_SIZE,
     validation_data=validation_generator,
-    validation_steps=my_val_steps)
+    validation_steps=my_val_steps,
+    callbacks= [checkPoint, reduceLR, csvLogger],
+    verbose=True)
 
-model.evaluate_generator(
-    test_generator,
+model.save('Bcfg4noaugm.h5')
+
+# generating prediction values for computing ROC_AUC score
+
+pred_generator = dataval_generator(test_filelist, BATCH_SIZE, False)
+[x_test, y_test] = testdata(test_filelist, TEST_SIZE)
+y_test = np.reshape(y_test, (TEST_SIZE,1))
+y_pred = model.predict_generator(
+    pred_generator,
     steps=my_test_steps)
+# Calculate total roc auc score
+score = roc_auc_score(y_test, y_pred[0:TEST_SIZE])
+print("Total roc auc score = {0:0.4f}".format(score))
+
+
 
 
