@@ -34,6 +34,7 @@ csvLogger = CSVLogger('training.log', separator=',', append=False)
 
 SPECTPATH = '/audio/audio/workingfiles/spect/'
 #SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
+#SPECTPATH = 'C:\Sidrah\DCASE2018\dataset\spect\'
 # path to spectrogram files stored in separate directories for each dataset
 # -spect/
 #       BirdVox-DCASE-20k
@@ -42,25 +43,27 @@ SPECTPATH = '/audio/audio/workingfiles/spect/'
 
 LABELPATH = '/audio/audio/labels/'
 #LABELPATH = '/home/sidrah/DL/bulbul2018/labels/'
+#LABELPATH = 'C:\Sidrah\DCASE2018\dataset\labels\'
 # path to label files stored in a single directory named accordingly for each dataset
 # -labels/
 #       BirdVox-DCASE-20k.csv, ff1010bird.csv, warblrb10k.csv
 
 FILELIST = '/audio/audio/workingfiles/filelists/'
 #FILELIST = '/home/sidrah/DL/bulbul2018/workingfiles/filelists/'
+#FILELIST = 'C:\Sidrah\DCASE2018\dataset\filelists'
 # create this directory in main project directory
 
 #DATASET = 'BirdVox-DCASE-20k.csv'
 
 BATCH_SIZE = 32
 EPOCH_SIZE = 50
-AUGMENT_SIZE = 1
+AUGMENT_SIZE = 8
 shape = (700, 80)
 spect = np.zeros(shape)
 label = np.zeros(1)
 TRAIN_SIZE = 16000.0
 VAL_SIZE = 1000.0
-TEST_SIZE = 3000.0
+TEST_SIZE = 6152.0
 
 # use this generator when augmentation is needed
 def data_generator(filelistpath, batch_size=32, shuffle=False):
@@ -76,7 +79,6 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
 
     dataset = ['BirdVox-DCASE-20k.csv', 'ff1010bird.csv', 'warblrb10k.csv']
 
-    labels_list = []
     labels_dict = {}
     for n in range(len(dataset)):
         labels_list = csv.reader(open(LABELPATH + dataset[n], 'r'))
@@ -195,8 +197,8 @@ def testdata(filelistpath, test_size):
         for k, r, v in labels_list:
             labels_dict[r + '/' + k + '.wav'] = v
 
-    spect_batch = np.zeros([test_size, spect.shape[0], spect.shape[1], 1])
-    label_batch = np.zeros([test_size, 1])
+    spect_batch = np.zeros([int(test_size), spect.shape[0], spect.shape[1], 1])
+    label_batch = np.zeros([int(test_size), 1])
 
     for m in range(len(filenames)):
         image_index = (image_index + 1) % len(filenames)
