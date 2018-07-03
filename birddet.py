@@ -26,8 +26,8 @@ from keras.callbacks import CSVLogger
 from keras.callbacks import EarlyStopping
 
 reduceLR = ReduceLROnPlateau(factor=0.2, patience=2, min_lr=0.00001)
-checkPoint = ModelCheckpoint(filepath = 'B_cfg4_noaug.h5', save_best_only=True)
-csvLogger = CSVLogger('training.log', separator=',', append=False)
+checkPoint = ModelCheckpoint(filepath = 'FandB_cfg4_noaug_ckpt.h5', save_best_only=True)
+csvLogger = CSVLogger('trainingF_ROC_B_noaug.log', separator=',', append=False)
 #earlyStopping = EarlyStopping(patience=5)
 #callbacks= [myCheckPoint, reduce_lr, earlyStopping],
 
@@ -61,9 +61,9 @@ AUGMENT_SIZE = 8
 shape = (700, 80)
 spect = np.zeros(shape)
 label = np.zeros(1)
-TRAIN_SIZE = 16000.0
-VAL_SIZE = 1000.0
-TEST_SIZE = 6152.0
+TRAIN_SIZE = 6152.0
+VAL_SIZE = 385.0
+TEST_SIZE = 3000.0
 
 # use this generator when augmentation is needed
 def data_generator(filelistpath, batch_size=32, shuffle=False):
@@ -181,6 +181,7 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
             outputs = [label_batch]
             yield inputs, outputs
 
+# this function is for generating only labels for computing ROC
 def testdata(filelistpath, test_size):
     image_index = -1
 
@@ -197,7 +198,6 @@ def testdata(filelistpath, test_size):
         for k, r, v in labels_list:
             labels_dict[r + '/' + k + '.wav'] = v
 
-    spect_batch = np.zeros([int(test_size), spect.shape[0], spect.shape[1], 1])
     label_batch = np.zeros([int(test_size), 1])
 
     for m in range(len(filenames)):
@@ -205,25 +205,14 @@ def testdata(filelistpath, test_size):
 
         file_id = filenames[image_index].rstrip()
 
-        hf = h5py.File(SPECTPATH + file_id + '.h5', 'r')
-        imagedata = hf.get('features')
-        imagedata = np.array(imagedata)
-        hf.close()
-
-        # normalizing intensity values of spectrogram from [-15.0966 to 2.25745] to [0 to 1] range
-        imagedata = (imagedata + 15.0966) / (15.0966 + 2.25745)
-        imagedata = np.reshape(imagedata, (1, imagedata.shape[0], imagedata.shape[1], 1))
-
-        spect_batch[image_index, :, :, :] = imagedata
         label_batch[image_index, :] = labels_dict[file_id]
 
-        inputs = [spect_batch]
         outputs = [label_batch]
 
-    return inputs, outputs
+    return outputs
 
-train_filelist=[FILELIST+'train_B']
-val_filelist=[FILELIST+'val_B']
+train_filelist=[FILELIST+'train_F']
+val_filelist=[FILELIST+'val_F']
 test_filelist=[FILELIST+'test_B']
 #train_filelist=['/audio/audio/workingfiles/filelists/train_B']
 #val_filelist=['/audio/audio/workingfiles/filelists/val_B']
@@ -299,18 +288,18 @@ history = model.fit_generator(
     callbacks= [checkPoint, reduceLR, csvLogger],
     verbose=True)
 
-model.save('Bcfg4noaugm.h5')
+model.save('FandB_cfg4_noaugm_flmdl.h5')
 
 # generating prediction values for computing ROC_AUC score
 
 pred_generator = dataval_generator(test_filelist, BATCH_SIZE, False)
-[x_test, y_test] = testdata(test_filelist, TEST_SIZE)
-y_test = np.reshape(y_test, (TEST_SIZE,1))
+[x_test, y_test] = testdata(test_filelist, int(TEST_SIZE))
+y_test = np.reshape(y_test, (int(TEST_SIZE),1))
 y_pred = model.predict_generator(
     pred_generator,
     steps=my_test_steps)
 # Calculate total roc auc score
-score = roc_auc_score(y_test, y_pred[0:TEST_SIZE])
+score = roc_auc_score(y_test[0:int(my_test_steps*BATCH_SIZE)], y_pred[0:int(my_test_steps*BATCH_SIZE)])
 print("Total roc auc score = {0:0.4f}".format(score))
 
 
