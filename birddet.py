@@ -56,7 +56,7 @@ FILELIST = '/audio/audio/workingfiles/filelists/'
 #DATASET = 'BirdVox-DCASE-20k.csv'
 
 BATCH_SIZE = 32
-EPOCH_SIZE = 50
+EPOCH_SIZE = 30
 AUGMENT_SIZE = 8
 shape = (700, 80)
 spect = np.zeros(shape)
