@@ -293,7 +293,7 @@ model.save('FandB_cfg4_noaugm_flmdl.h5')
 # generating prediction values for computing ROC_AUC score
 
 pred_generator = dataval_generator(test_filelist, BATCH_SIZE, False)
-[x_test, y_test] = testdata(test_filelist, int(TEST_SIZE))
+y_test = testdata(test_filelist, int(TEST_SIZE))
 y_test = np.reshape(y_test, (int(TEST_SIZE),1))
 y_pred = model.predict_generator(
     pred_generator,
