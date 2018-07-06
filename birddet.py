@@ -44,23 +44,23 @@ FILELIST = '/audio/audio/workingfiles/filelists/'
 #FILELIST = 'C:\Sidrah\DCASE2018\dataset\filelists'
 # create this directory in main project directory
 
-logfile_name = 'trainingF_ROC_B_noaug.log'
-checkpoint_model_name = 'FandB_cfg4_noaug_ckpt.h5'
-final_model_name = 'FandB_cfg4_noaugm_flmdl.h5'
+logfile_name = 'trainingBF_ROC_W_noaug.log'
+checkpoint_model_name = 'FBforW_cfg4_noaug_ckpt.h5'
+final_model_name = 'FBforW_cfg4_noaug_flmdl.h5'
 
 BATCH_SIZE = 32
 EPOCH_SIZE = 30
 AUGMENT_SIZE = 8
 with_augmentation = False
 
-train_filelist=[FILELIST+'train_F']
-TRAIN_SIZE = 6152.0
+train_filelist=[FILELIST+'train_BF']
+TRAIN_SIZE = 22152.0
 
-val_filelist=[FILELIST+'val_F']
-VAL_SIZE = 385.0
+val_filelist=[FILELIST+'val_BF']
+VAL_SIZE = 1385.0
 
-test_filelist=[FILELIST+'test_B']
-TEST_SIZE = 3000.0
+test_filelist=[FILELIST+'test_BF']
+TEST_SIZE = 4153.0
 
 shape = (700, 80)
 spect = np.zeros(shape)
