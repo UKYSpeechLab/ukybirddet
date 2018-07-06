@@ -2,24 +2,23 @@ Bird Audio Detection Challenge 2018 - DCASE Task 3
 
 This is the submission for DCASE 2018 Task 3 by UKYSpeechLab
 
-Required Software:
+**Required Software:**
+- Python version 3.5
+- Tensorflow-gpu (tested on v1.8)
+- Keras
 
-Python version 3.5
+**Other packages and dependencies:**
+- numpy
+- csv
+- h5py
+- scikit-learn
 
-Tensorflow-gpu (tested on v1.8)
+**Selecting Datasets for Processing:**
 
-Keras
+There are three datasets: birdvox, ff, and warblr, represented by the dictionaries `d_birdVox`, `d_ff`, and `d_warblr` respectively. If you want to train, test, or validate the model with different combinations of these sets, look to lines 94-96, specifically: 
 
-Other packages and dependencies:
+`training_set = d_ff`
 
-numpy
+`validation_set = d_ff`
 
-csv
-
-h5py
-
-scikit-learn
-
-
-
-
+`test_set = d_birdVox`
