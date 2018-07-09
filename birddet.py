@@ -23,6 +23,12 @@ from keras.callbacks import ReduceLROnPlateau
 from keras.callbacks import CSVLogger
 from keras.callbacks import EarlyStopping
 
+################################################
+#
+#   Global parameters
+#
+################################################
+
 SPECTPATH = '/audio/audio/workingfiles/spect/'
 #SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
 #SPECTPATH = 'C:\Sidrah\DCASE2018\dataset\spect\'
@@ -53,23 +59,57 @@ EPOCH_SIZE = 30
 AUGMENT_SIZE = 8
 with_augmentation = False
 
-train_filelist=[FILELIST+'train_BF']
-TRAIN_SIZE = 22152.0
-
-val_filelist=[FILELIST+'val_BF']
-VAL_SIZE = 1385.0
-
-test_filelist=[FILELIST+'test_BF']
-TEST_SIZE = 4153.0
-
 shape = (700, 80)
 spect = np.zeros(shape)
 label = np.zeros(1)
 
+# Callbacks for logging during epochs
 reduceLR = ReduceLROnPlateau(factor=0.2, patience=2, min_lr=0.00001)
 checkPoint = ModelCheckpoint(filepath = checkpoint_model_name, save_best_only=True)
 csvLogger = CSVLogger(logfile_name, separator=',', append=False)
 #earlyStopping = EarlyStopping(patience=5)
+
+################################################
+#
+#   Data set selection
+#
+################################################
+
+# Parameters in this section can be adjusted to select different data sets to train, test, and validate on.
+
+# Keys by which we will access properties of a data set. The values assigned here are ultimately meaningless.
+# The 'k' prefix on these declarations signify that they will be used as keys in a dictionary.
+k_FILE_LIST = 'file_path'
+k_VAL_SIZE = 'validate_size'
+k_TEST_SIZE = 'test_size'
+k_TRAIN_SIZE = 'train_size'
+
+# Declare the dictionaries to represent the data sets
+d_birdVox = {k_FILE_LIST: 'test_B', k_VAL_SIZE: 1000.0, k_TEST_SIZE: 3000.0, k_TRAIN_SIZE: 16000.0}
+d_warblr = {k_FILE_LIST: 'test_W', k_VAL_SIZE: 400.0, k_TEST_SIZE: 1200.0, k_TRAIN_SIZE: 6400.0}
+d_ff = {k_FILE_LIST: 'test_F', k_VAL_SIZE: 385.0, k_TEST_SIZE: 1153.0, k_TRAIN_SIZE: 6152.0}
+
+# Declare the training, validation, and testing sets here using the dictionaries defined above.
+# Set these variables to change the data set.
+training_set = d_ff
+validation_set = d_ff
+test_set = d_birdVox
+
+# Grab the file lists and sizes from the corresponding data sets.
+train_filelist = FILELIST + training_set[k_FILE_LIST]
+TRAIN_SIZE = training_set[k_TRAIN_SIZE]
+
+val_filelist = FILELIST + validation_set[k_FILE_LIST]
+VAL_SIZE = validation_set[k_VAL_SIZE]
+
+test_filelist = FILELIST + test_set[k_FILE_LIST]
+TEST_SIZE = test_set[k_TEST_SIZE]
+
+################################################
+#
+#   Generator with Augmentation
+#
+################################################
 
 # use this generator when augmentation is needed
 def data_generator(filelistpath, batch_size=32, shuffle=False):
@@ -132,7 +172,13 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
                 outputs = [aug_label_batch]
                 yield inputs, outputs
 
-# use this generator when augmentation is not needed
+
+################################################
+#
+#   Generator without Augmentation
+#
+################################################
+
 def dataval_generator(filelistpath, batch_size=32, shuffle=False):
     batch_index = 0
     image_index = -1
@@ -180,14 +226,19 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
 
         batch_index += 1
 
-
         if batch_index >= batch_size:
             batch_index = 0
             inputs = [spect_batch]
             outputs = [label_batch]
             yield inputs, outputs
 
-# this function is for generating only labels for computing ROC
+
+################################################
+#
+#   ROC Label Generation
+#
+################################################
+
 def testdata(filelistpath, test_size):
     image_index = -1
 
@@ -216,6 +267,13 @@ def testdata(filelistpath, test_size):
         outputs = [label_batch]
 
     return outputs
+
+
+################################################
+#
+#   Model Creation
+#
+################################################
 
 if(with_augmentation == True):
     train_generator = data_generator(train_filelist, BATCH_SIZE, True)
@@ -271,7 +329,7 @@ model.add(LeakyReLU(alpha=.001))
 model.add(Dropout(0.5))
 model.add(Dense(1,activation='sigmoid'))
 
-adam=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
+adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
 model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['acc'])
 
 # prepare callback
@@ -305,7 +363,4 @@ y_pred = model.predict_generator(
 # Calculate total roc auc score
 score = roc_auc_score(y_test[0:int(my_test_steps*BATCH_SIZE)], y_pred[0:int(my_test_steps*BATCH_SIZE)])
 print("Total roc auc score = {0:0.4f}".format(score))
-
-
-
 
