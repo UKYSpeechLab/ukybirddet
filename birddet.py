@@ -7,6 +7,7 @@ import csv
 import numpy as np
 import random
 import PIL.Image
+import matplotlib.pyplot as plt
 
 from sklearn.metrics import roc_auc_score
 
@@ -16,6 +17,7 @@ from keras.models import Sequential
 from keras.layers.advanced_activations import LeakyReLU
 from keras.preprocessing.image import ImageDataGenerator
 from keras.losses import binary_crossentropy, mean_squared_error, mean_absolute_error
+from keras.regularizers import l2
 
 import my_callbacks
 from keras.callbacks import ModelCheckpoint
@@ -29,8 +31,8 @@ from keras.callbacks import EarlyStopping
 #
 ################################################
 
-SPECTPATH = '/audio/audio/workingfiles/spect/'
-#SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
+#SPECTPATH = '/audio/audio/workingfiles/spect/'
+SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
 #SPECTPATH = 'C:\Sidrah\DCASE2018\dataset\spect\'
 # path to spectrogram files stored in separate directories for each dataset
 # -spect/
@@ -38,15 +40,15 @@ SPECTPATH = '/audio/audio/workingfiles/spect/'
 #       ff1010bird
 #       warblrb10k
 
-LABELPATH = '/audio/audio/labels/'
-#LABELPATH = '/home/sidrah/DL/bulbul2018/labels/'
+#LABELPATH = '/audio/audio/labels/'
+LABELPATH = '/home/sidrah/DL/bulbul2018/labels/'
 #LABELPATH = 'C:\Sidrah\DCASE2018\dataset\labels\'
 # path to label files stored in a single directory named accordingly for each dataset
 # -labels/
 #       BirdVox-DCASE-20k.csv, ff1010bird.csv, warblrb10k.csv
 
-FILELIST = '/audio/audio/workingfiles/filelists/'
-#FILELIST = '/home/sidrah/DL/bulbul2018/workingfiles/filelists/'
+#FILELIST = '/audio/audio/workingfiles/filelists/'
+FILELIST = '/home/sidrah/DL/bulbul2018/workingfiles/filelists/'
 #FILELIST = 'C:\Sidrah\DCASE2018\dataset\filelists'
 # create this directory in main project directory
 
@@ -65,7 +67,7 @@ label = np.zeros(1)
 
 # Callbacks for logging during epochs
 reduceLR = ReduceLROnPlateau(factor=0.2, patience=2, min_lr=0.00001)
-checkPoint = ModelCheckpoint(filepath = checkpoint_model_name, save_best_only=True)
+checkPoint = ModelCheckpoint(filepath = checkpoint_model_name, save_best_only=True)   # criterion = 'val_acc', mode = 'max'
 csvLogger = CSVLogger(logfile_name, separator=',', append=False)
 #earlyStopping = EarlyStopping(patience=5)
 
@@ -299,10 +301,10 @@ model = Sequential()
 #preprocessing_function
 
 # convolution layers
-model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(700, 80, 1)))
-model.add(BatchNormalization())
+model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(700, 80, 1), ))   # low: try different kernel_initializer
+model.add(BatchNormalization())  # explore order of Batchnorm and activation
 model.add(LeakyReLU(alpha=.001))
-model.add(MaxPooling2D(pool_size=(3,3)))
+model.add(MaxPooling2D(pool_size=(3,3))) # experiment with using smaller pooling along frequency axis
 model.add(Conv2D(16, (3, 3), padding='valid'))
 model.add(BatchNormalization())
 model.add(LeakyReLU(alpha=.001))
@@ -311,7 +313,7 @@ model.add(Conv2D(16, (3, 1), padding='valid'))
 model.add(BatchNormalization())
 model.add(LeakyReLU(alpha=.001))
 model.add(MaxPooling2D(pool_size=(3,1)))
-model.add(Conv2D(16, (3, 1), padding='valid'))
+model.add(Conv2D(16, (3, 1), padding='valid', kernel_regularizer=l2(0.01))) # drfault 0.01. Try 0.001 and 0.001
 model.add(BatchNormalization())
 model.add(LeakyReLU(alpha=.001))
 model.add(MaxPooling2D(pool_size=(3,1)))
@@ -325,8 +327,8 @@ model.add(LeakyReLU(alpha=.001))
 model.add(Dropout(0.5))
 model.add(Dense(32))
 model.add(BatchNormalization())
-model.add(LeakyReLU(alpha=.001))
-model.add(Dropout(0.5))
+model.add(LeakyReLU(alpha=.001))# leaky relu value is very small experiment with bigger ones
+model.add(Dropout(0.5)) # experiment with removing this dropout
 model.add(Dense(1,activation='sigmoid'))
 
 adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
@@ -364,3 +366,25 @@ y_pred = model.predict_generator(
 score = roc_auc_score(y_test[0:int(my_test_steps*BATCH_SIZE)], y_pred[0:int(my_test_steps*BATCH_SIZE)])
 print("Total roc auc score = {0:0.4f}".format(score))
 
+#print(history.history)
+
+# Plotting
+
+plt.figure(0)
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.show()
+
+
+plt.figure(1)
+plt.plot(history.history['acc'])
+plt.plot(history.history['val_acc'])
+plt.title('Accuracy')
+plt.ylabel('Accuracy %')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.show()
