@@ -33,8 +33,8 @@ from keras.callbacks import EarlyStopping
 ################################################
 
 #checking mfc features
-SPECTPATH = '/audio/audio/mfcfeatures/'
-#SPECTPATH = '/audio/audio/workingfiles/spect/'
+#SPECTPATH = '/audio/audio/mfcfeatures/'
+SPECTPATH = '/audio/audio/workingfiles/spect/'
 #SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
 #SPECTPATH = 'C:\Sidrah\DCASE2018\dataset\spect\'
 # path to spectrogram files stored in separate directories for each dataset
@@ -57,24 +57,25 @@ FILELIST = '/audio/audio/workingfiles/filelists/'
 
 dataset = ['BirdVox-DCASE-20k.csv', 'ff1010bird.csv', 'warblrb10k.csv']
 #features =['h5','mfc']
-logfile_name = 'backup/mfc_model_3epochonff/furtheronFF/FforF_mfc_cfg4LR_noaug.log'
-checkpoint_model_name = 'backup/mfc_model_3epochonff/furtheronFF/FforF_mfc_cfg4LR_noaug_ckpt.h5'
-final_model_name = 'backup/mfc_model_3epochonff/furtheronFF/FforF_mfc_cfg4LR_noaug_flmdl.h5'
+logfile_name = 'test.log'
+checkpoint_model_name = 'test_ckpt.h5'
+final_model_name = 'test_flmdl.h5'
 
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 EPOCH_SIZE = 20
 AUGMENT_SIZE = 8
 with_augmentation = False
-features='mfc'
-model_operation = 'load'
+features='h5'
+model_operation = 'new'
 # model_operations : 'new', 'load', 'test'
-#shape = (700, 80)
-shape = (1669, 160)
+shape = (700, 80)
+#shape = (1669, 160)
+expected_shape = (700, 80)
 spect = np.zeros(shape)
 label = np.zeros(1)
 
 # Callbacks for logging during epochs
-reduceLR = ReduceLROnPlateau(factor=0.2, patience=2, min_lr=0.00001)
+reduceLR = ReduceLROnPlateau(factor=0.2, patience=5, min_lr=0.00001)
 checkPoint = ModelCheckpoint(filepath = checkpoint_model_name, save_best_only=True)   # criterion = 'val_acc', mode = 'max'
 csvLogger = CSVLogger(logfile_name, separator=',', append=False)
 #earlyStopping = EarlyStopping(patience=5)
@@ -103,9 +104,9 @@ d_freefield = {k_VAL_FILE: 'val_F', k_TEST_FILE: 'test_F', k_TRAIN_FILE: 'train_
 
 # Declare the training, validation, and testing sets here using the dictionaries defined above.
 # Set these variables to change the data set.
-training_set = d_freefield
-validation_set = d_freefield
-test_set = d_freefield
+training_set = d_warblr
+validation_set = d_warblr
+test_set = d_warblr
 
 # Grab the file lists and sizes from the corresponding data sets.
 train_filelist = FILELIST + training_set[k_TRAIN_FILE]
@@ -166,13 +167,12 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
             imagedata = hf.get('features')
             imagedata = np.array(imagedata)
             hf.close()
+            # normalizing intensity values of spectrogram from [-15.0966 to 2.25745] to [0 to 1] range
+            imagedata = (imagedata + 15.0966)/(15.0966 + 2.25745)
         elif features == 'mfc':
             htk_reader = HTKFile()
             htk_reader.load(SPECTPATH + file_id.rstrip('.wav') + '.mfc')
             imagedata = np.array(htk_reader.data)
-
-        # normalizing intensity values of spectrogram from [-15.0966 to 2.25745] to [0 to 1] range
-        #imagedata = (imagedata + 15.0966)/(15.0966 + 2.25745)
 
         imagedata = np.reshape(imagedata, (1, imagedata.shape[0], imagedata.shape[1], 1))
 
@@ -236,13 +236,55 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
             imagedata = np.array(imagedata)
             hf.close()
 
+            # normalizing intensity values of spectrogram from [-15.0966 to 2.25745] to [0 to 1] range
+            imagedata = (imagedata + 15.0966)/(15.0966 + 2.25745)
+
         elif features == 'mfc':
             htk_reader = HTKFile()
             htk_reader.load(SPECTPATH + file_id.rstrip('.wav') + '.mfc')
             imagedata = np.array(htk_reader.data)
 
-        # normalizing intensity values of spectrogram from [-15.0966 to 2.25745] to [0 to 1] range
-        #imagedata = (imagedata + 15.0966) / (15.0966 + 2.25745)
+        # processing files with shapes other than expected shape in warblr dataset
+        old_imagedata = imagedata
+        imagedata = np.zeros(expected_shape)
+
+        if old_imagedata.shape[0] < expected_shape[0]:
+
+            diff_in_frames = expected_shape[0] - old_imagedata.shape[0]
+            if diff_in_frames < expected_shape[0] / 2:
+                imagedata = np.vstack((old_imagedata, old_imagedata[
+                    range(old_imagedata.shape[0] - diff_in_frames, old_imagedata.shape[0])]))
+
+                # print(['PADDING on file: ' + str(k) + 'Prev duration: ' + str(imagedata.shape[0]) + '  New duration: ' + str(new_imagedata.shape[0])])
+            elif diff_in_frames > expected_shape[0] / 2:
+                count = np.floor(expected_shape[0] / old_imagedata.shape[0])
+                remaining_diff = (expected_shape[0] - old_imagedata.shape[0] * int(count))
+                imagedata = np.vstack(([old_imagedata] * int(count)))
+                imagedata = np.vstack(
+                    (imagedata, old_imagedata[range(old_imagedata.shape[0] - remaining_diff, old_imagedata.shape[0])]))
+
+                print(['PADDING on file: ' + str(k) + 'Prev duration: ' + str(imagedata.shape[0]) + '  New duration: ' + str(imagedata.shape[0])])
+
+            else:
+                print(['Unchanged file: ' + str(k) + 'Prev duration: ' + str(old_imagedata.shape[0])])
+
+        elif old_imagedata.shape[0] > expected_shape[0]:
+            diff_in_frames = old_imagedata.shape[0] - expected_shape[0]
+
+            if diff_in_frames < expected_shape[0] / 2:
+                imagedata[range(0, diff_in_frames + 1), :] = np.mean(np.array([old_imagedata[range(0, diff_in_frames + 1), :],old_imagedata[range(old_imagedata.shape[0] - diff_in_frames - 1, old_imagedata.shape[0]), :]]),axis=0)
+                imagedata[range(diff_in_frames + 1, expected_shape[0]), :] = old_imagedata[range(diff_in_frames + 1, expected_shape[0])]
+
+            elif diff_in_frames > expected_shape[0] / 2:
+                count = int(np.floor(old_imagedata.shape[0] / expected_shape[0]))
+                remaining_diff = (old_imagedata.shape[0] - expected_shape[0] * count)
+                for index in range(0, count):
+                    imagedata[range(0, expected_shape[0]), :] = np.sum([imagedata, old_imagedata[range(index * expected_shape[0], (index + 1) * expected_shape[0])]],axis=0) / count
+                    imagedata[range(0, remaining_diff), :] = np.mean(np.array([old_imagedata[range(old_imagedata.shape[0] - remaining_diff, old_imagedata.shape[0]), :],imagedata[range(0, remaining_diff), :]]), axis=0)
+
+                print(['PADDING on file: ' + str(k) + 'Prev duration: ' + str(imagedata.shape[0]) + '  New duration: ' + str(imagedata.shape[0])])
+            else:
+                print(['Unchanged file: ' + str(k) + 'Prev duration: ' + str(old_imagedata.shape[0])])
 
         imagedata = np.reshape(imagedata, (1, imagedata.shape[0], imagedata.shape[1], 1))
 
@@ -256,8 +298,6 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
             inputs = [spect_batch]
             outputs = [label_batch]
             yield inputs, outputs
-
-
 ################################################
 #
 #   ROC Label Generation
@@ -323,7 +363,7 @@ if model_operation == 'new':
     #preprocessing_function
 
     # convolution layers
-    model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(1669, 160, 1), ))   # low: try different kernel_initializer
+    model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(700, 80, 1), ))   # low: try different kernel_initializer
     model.add(BatchNormalization())  # explore order of Batchnorm and activation
     model.add(LeakyReLU(alpha=.001))
     model.add(MaxPooling2D(pool_size=(3,3))) # experiment with using smaller pooling along frequency axis
@@ -354,7 +394,7 @@ if model_operation == 'new':
     model.add(Dense(1,activation='sigmoid'))
 
 elif model_operation == 'load' or model_operation == 'test':
-    model = load_model('backup/mfc_model_3epochonff/BforB_mfc_cfg4LR_noaug_ckpt.h5')
+    model = load_model('test_ckpt.h5')
 
 if model_operation == 'new' or model_operation == 'load':
     adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
