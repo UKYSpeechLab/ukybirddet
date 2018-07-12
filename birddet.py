@@ -10,15 +10,29 @@ import PIL.Image
 import matplotlib.pyplot as plt
 from HTK import HTKFile
 
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve, auc
 
 import keras
 from keras.layers import Conv2D, Dropout, MaxPooling2D, Dense, GlobalAveragePooling2D, Flatten, BatchNormalization
-from keras.models import Sequential, load_model
+from keras.models import Sequential, load_model, Input
 from keras.layers.advanced_activations import LeakyReLU
 from keras.preprocessing.image import ImageDataGenerator
 from keras.losses import binary_crossentropy, mean_squared_error, mean_absolute_error
 from keras.regularizers import l2
+from keras.applications import ResNet50
+from keras import Model
+
+from keras import layers
+from keras.layers import Dense
+from keras.layers import Activation
+from keras.layers import GlobalMaxPooling2D
+from keras.layers import ZeroPadding2D
+from keras.layers import GlobalAveragePooling2D
+from keras.layers import BatchNormalization
+from keras.models import Model
+from keras.preprocessing import image
+import keras.backend as K
+from keras.utils import layer_utils
 
 import my_callbacks
 from keras.callbacks import ModelCheckpoint
@@ -227,7 +241,7 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
 
         if batch_index == 0:
             # re-initialize spectrogram and label batch
-            spect_batch = np.zeros([batch_size, spect.shape[0], spect.shape[1], 1])
+            spect_batch = np.zeros([batch_size, spect.shape[0], spect.shape[1], 3])
             label_batch = np.zeros([batch_size, 1])
 
         if features == 'h5':
@@ -288,7 +302,9 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
 
         imagedata = np.reshape(imagedata, (1, imagedata.shape[0], imagedata.shape[1], 1))
 
-        spect_batch[batch_index, :, :, :] = imagedata
+        spect_batch[batch_index, :, :, 0] = imagedata
+        spect_batch[batch_index, :, :, 1] = imagedata
+        spect_batch[batch_index, :, :, 2] = imagedata
         label_batch[batch_index, :] = labels_dict[file_id]
 
         batch_index += 1
@@ -355,43 +371,143 @@ datagen = ImageDataGenerator(
     horizontal_flip=False,
     fill_mode="wrap")
 
+def identity_block(input_tensor, kernel_size, filters, stage, block):
+    """The identity block is the block that has no conv layer at shortcut.
+    # Arguments
+        input_tensor: input tensor
+        kernel_size: defualt 3, the kernel size of middle conv layer at main path
+        filters: list of integers, the filterss of 3 conv layer at main path
+        stage: integer, current stage label, used for generating layer names
+        block: 'a','b'..., current block label, used for generating layer names
+    # Returns
+        Output tensor for the block.
+    """
+    filters1, filters2, filters3 = filters
+    if K.image_data_format() == 'channels_last':
+        bn_axis = 3
+    else:
+        bn_axis = 1
+    conv_name_base = 'res' + str(stage) + block + '_branch'
+    bn_name_base = 'bn' + str(stage) + block + '_branch'
+
+    x = Conv2D(filters1, (1, 1), name=conv_name_base + '2a')(input_tensor)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(filters2, kernel_size,
+               padding='same', name=conv_name_base + '2b')(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(filters3, (1, 1), name=conv_name_base + '2c')(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
+
+    x = layers.add([x, input_tensor])
+    x = Activation('relu')(x)
+    return x
+
+
+def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2)):
+    """conv_block is the block that has a conv layer at shortcut
+    # Arguments
+        input_tensor: input tensor
+        kernel_size: defualt 3, the kernel size of middle conv layer at main path
+        filters: list of integers, the filterss of 3 conv layer at main path
+        stage: integer, current stage label, used for generating layer names
+        block: 'a','b'..., current block label, used for generating layer names
+    # Returns
+        Output tensor for the block.
+    Note that from stage 3, the first conv layer at main path is with strides=(2,2)
+    And the shortcut should have strides=(2,2) as well
+    """
+    filters1, filters2, filters3 = filters
+    if K.image_data_format() == 'channels_last':
+        bn_axis = 3
+    else:
+        bn_axis = 1
+    conv_name_base = 'res' + str(stage) + block + '_branch'
+    bn_name_base = 'bn' + str(stage) + block + '_branch'
+
+    x = Conv2D(filters1, (1, 1), strides=strides,
+               name=conv_name_base + '2a')(input_tensor)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(filters2, kernel_size, padding='same',
+               name=conv_name_base + '2b')(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(filters3, (1, 1), name=conv_name_base + '2c')(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
+
+    shortcut = Conv2D(filters3, (1, 1), strides=strides,
+                      name=conv_name_base + '1')(input_tensor)
+    shortcut = BatchNormalization(axis=bn_axis, name=bn_name_base + '1')(shortcut)
+
+    x = layers.add([x, shortcut])
+    x = Activation('relu')(x)
+    return x
+
 if model_operation == 'new':
-    model = Sequential()
-    # augmentation generator
-    # code from baseline : "augment:Rotation|augment:Shift(low=-1,high=1,axis=3)"
-    # keras augmentation:
-    #preprocessing_function
+    my_input = Input(shape=(700, 80, 3))
 
-    # convolution layers
-    model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(700, 80, 1), ))   # low: try different kernel_initializer
-    model.add(BatchNormalization())  # explore order of Batchnorm and activation
-    model.add(LeakyReLU(alpha=.001))
-    model.add(MaxPooling2D(pool_size=(3,3))) # experiment with using smaller pooling along frequency axis
-    model.add(Conv2D(16, (3, 3), padding='valid'))
-    model.add(BatchNormalization())
-    model.add(LeakyReLU(alpha=.001))
-    model.add(MaxPooling2D(pool_size=(3,3)))
-    model.add(Conv2D(16, (3, 1), padding='valid'))
-    model.add(BatchNormalization())
-    model.add(LeakyReLU(alpha=.001))
-    model.add(MaxPooling2D(pool_size=(3,1)))
-    model.add(Conv2D(16, (3, 1), padding='valid', kernel_regularizer=l2(0.01))) # drfault 0.01. Try 0.001 and 0.001
-    model.add(BatchNormalization())
-    model.add(LeakyReLU(alpha=.001))
-    model.add(MaxPooling2D(pool_size=(3,1)))
+    if K.image_data_format() == 'channels_last':
+        bn_axis = 3
+    else:
+        bn_axis = 1
 
-    # dense layers
-    model.add(Flatten())
-    model.add(Dropout(0.5))
-    model.add(Dense(256))
-    model.add(BatchNormalization())
-    model.add(LeakyReLU(alpha=.001))
-    model.add(Dropout(0.5))
-    model.add(Dense(32))
-    model.add(BatchNormalization())
-    model.add(LeakyReLU(alpha=.001))# leaky relu value is very small experiment with bigger ones
-    model.add(Dropout(0.5)) # experiment with removing this dropout
-    model.add(Dense(1,activation='sigmoid'))
+    x = ZeroPadding2D((3, 3))(my_input)
+    x = Conv2D(64, (7, 7), strides=(2, 2), name='conv1')(x)
+    x = BatchNormalization(axis=bn_axis, name='bn_conv1')(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D((3, 3), strides=(2, 2))(x)
+
+    x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1))
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='b')
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='c')
+
+    x = conv_block(x, 3, [128, 128, 512], stage=3, block='a')
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='b')
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='c')
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='d')
+
+    x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='c')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='d')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='e')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='f')
+
+    # Till activation_40: layer number=141
+
+    x = Conv2D(32, (1,1), activation='relu', padding='same')(x)
+
+    x = Flatten()(x)
+    x = Dense(1024, activation='relu')(x)
+    x = Dense(400, activation='relu')(x)
+    x = Dense(1, activation='sigmoid')(x)
+
+    model = Model(inputs=my_input, outputs=x)
+
+    model.summary()
+
+    base_model = ResNet50(include_top=False, input_shape=(700,700,3))
+    #base_model.summary()
+
+    #my_model = Model(inputs=base_model.input, outputs=)
+
+    ctr = 0
+    for layer in model.layers:
+        if ctr < 142:
+            layer.trainable = False
+            temp_wt = base_model.layers[ctr].get_weights()
+            layer.set_weights(temp_wt)
+            print('layer number ' + str(ctr))
+            print(layer.name)
+        ctr += 1
+
+    print('Debug')
 
 elif model_operation == 'load' or model_operation == 'test':
     model = load_model('test_ckpt.h5')
@@ -429,14 +545,14 @@ y_test = np.reshape(y_test, (int(TEST_SIZE),1))
 y_pred = model.predict_generator(
     pred_generator,
     steps=my_test_steps)
-# Calculate total roc auc score
-score = roc_auc_score(y_test[0:int(my_test_steps*BATCH_SIZE)], y_pred[0:int(my_test_steps*BATCH_SIZE)])
-print("Total roc auc score = {0:0.4f}".format(score))
 
+# Calculate total roc auc score
+fpr, tpr, threshold = roc_curve(y_test[0:int(my_test_steps*BATCH_SIZE)], y_pred[0:int(my_test_steps*BATCH_SIZE)])
+roc_auc = auc(fpr, tpr)
+print("Total roc auc score = {0:0.4f}".format(roc_auc))
 #print(history.history)
 
-# Plotting
-"""
+# method I: plt
 plt.figure(0)
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
@@ -444,8 +560,7 @@ plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.show()
-
+plt.savefig('loss.png')
 
 plt.figure(1)
 plt.plot(history.history['acc'])
@@ -454,5 +569,20 @@ plt.title('Accuracy')
 plt.ylabel('Accuracy %')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.show()
-"""
+plt.savefig('acc.png')
+
+plt.figure(2)
+plt.title('Receiver Operating Characteristic')
+plt.plot(fpr, tpr, 'b', label='AUC = %0.2f' % roc_auc)
+plt.legend(loc='lower right')
+plt.plot([0, 1], [0, 1], 'r--')
+plt.xlim([0, 1])
+plt.ylim([0, 1])
+plt.ylabel('True Positive Rate')
+plt.xlabel('False Positive Rate')
+plt.savefig('ROC_curve.png')
+
+#plt.figure(1)
+
+
+
