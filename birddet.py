@@ -10,10 +10,10 @@ import PIL.Image
 import matplotlib.pyplot as plt
 from HTK import HTKFile
 
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve, auc
 
 import keras
-from keras.layers import Conv2D, Dropout, MaxPooling2D, Dense, GlobalAveragePooling2D, Flatten, BatchNormalization
+from keras.layers import Conv2D, Dropout, MaxPooling2D, Dense, GlobalAveragePooling2D, Flatten, BatchNormalization, AveragePooling2D
 from keras.models import Sequential, load_model
 from keras.layers.advanced_activations import LeakyReLU
 from keras.preprocessing.image import ImageDataGenerator
@@ -57,12 +57,12 @@ FILELIST = '/audio/audio/workingfiles/filelists/'
 
 dataset = ['BirdVox-DCASE-20k.csv', 'ff1010bird.csv', 'warblrb10k.csv']
 #features =['h5','mfc']
-logfile_name = 'test.log'
-checkpoint_model_name = 'test_ckpt.h5'
-final_model_name = 'test_flmdl.h5'
+logfile_name = 'backup/config5/birdvox/logfile.log'
+checkpoint_model_name = 'backup/config5/birdvox/ckpt.h5'
+final_model_name = 'backup/config5/birdvox/flmdl.h5'
 
 BATCH_SIZE = 16
-EPOCH_SIZE = 20
+EPOCH_SIZE = 5
 AUGMENT_SIZE = 8
 with_augmentation = False
 features='h5'
@@ -101,12 +101,12 @@ k_TRAIN_SIZE = 'train_size'
 d_birdVox = {k_VAL_FILE: 'val_B', k_TEST_FILE: 'test_B', k_TRAIN_FILE: 'train_B', k_VAL_SIZE: 1000.0, k_TEST_SIZE: 3000.0, k_TRAIN_SIZE: 16000.0}
 d_warblr = {k_VAL_FILE: 'val_W', k_TEST_FILE: 'test_W', k_TRAIN_FILE: 'train_W', k_VAL_SIZE: 400.0, k_TEST_SIZE: 1200.0, k_TRAIN_SIZE: 6400.0}
 d_freefield = {k_VAL_FILE: 'val_F', k_TEST_FILE: 'test_F', k_TRAIN_FILE: 'train_F', k_VAL_SIZE: 385.0, k_TEST_SIZE: 1153.0, k_TRAIN_SIZE: 6152.0}
-
+d_fold1 = {k_VAL_FILE: 'test_BF', k_TEST_FILE: 'val_1', k_TRAIN_FILE: 'train_BF', k_VAL_SIZE: 4153.0, k_TEST_SIZE: 8000.0, k_TRAIN_SIZE: 22152.0}
 # Declare the training, validation, and testing sets here using the dictionaries defined above.
 # Set these variables to change the data set.
-training_set = d_warblr
-validation_set = d_warblr
-test_set = d_warblr
+training_set = d_birdVox
+validation_set = d_birdVox
+test_set = d_birdVox
 
 # Grab the file lists and sizes from the corresponding data sets.
 train_filelist = FILELIST + training_set[k_TRAIN_FILE]
@@ -245,46 +245,38 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
             imagedata = np.array(htk_reader.data)
 
         # processing files with shapes other than expected shape in warblr dataset
-        old_imagedata = imagedata
-        imagedata = np.zeros(expected_shape)
 
-        if old_imagedata.shape[0] < expected_shape[0]:
+        if imagedata.shape[0] != expected_shape[0]:
+            old_imagedata = imagedata
+            imagedata = np.zeros(expected_shape)
 
-            diff_in_frames = expected_shape[0] - old_imagedata.shape[0]
-            if diff_in_frames < expected_shape[0] / 2:
-                imagedata = np.vstack((old_imagedata, old_imagedata[
-                    range(old_imagedata.shape[0] - diff_in_frames, old_imagedata.shape[0])]))
+            if old_imagedata.shape[0] < expected_shape[0]:
 
-                # print(['PADDING on file: ' + str(k) + 'Prev duration: ' + str(imagedata.shape[0]) + '  New duration: ' + str(new_imagedata.shape[0])])
-            elif diff_in_frames > expected_shape[0] / 2:
-                count = np.floor(expected_shape[0] / old_imagedata.shape[0])
-                remaining_diff = (expected_shape[0] - old_imagedata.shape[0] * int(count))
-                imagedata = np.vstack(([old_imagedata] * int(count)))
-                imagedata = np.vstack(
-                    (imagedata, old_imagedata[range(old_imagedata.shape[0] - remaining_diff, old_imagedata.shape[0])]))
+                diff_in_frames = expected_shape[0] - old_imagedata.shape[0]
+                if diff_in_frames < expected_shape[0] / 2:
+                    imagedata = np.vstack((old_imagedata, old_imagedata[
+                        range(old_imagedata.shape[0] - diff_in_frames, old_imagedata.shape[0])]))
 
-                print(['PADDING on file: ' + str(k) + 'Prev duration: ' + str(imagedata.shape[0]) + '  New duration: ' + str(imagedata.shape[0])])
+                elif diff_in_frames > expected_shape[0] / 2:
+                    count = np.floor(expected_shape[0] / old_imagedata.shape[0])
+                    remaining_diff = (expected_shape[0] - old_imagedata.shape[0] * int(count))
+                    imagedata = np.vstack(([old_imagedata] * int(count)))
+                    imagedata = np.vstack(
+                        (imagedata, old_imagedata[range(old_imagedata.shape[0] - remaining_diff, old_imagedata.shape[0])]))
 
-            else:
-                print(['Unchanged file: ' + str(k) + 'Prev duration: ' + str(old_imagedata.shape[0])])
+            elif old_imagedata.shape[0] > expected_shape[0]:
+                diff_in_frames = old_imagedata.shape[0] - expected_shape[0]
 
-        elif old_imagedata.shape[0] > expected_shape[0]:
-            diff_in_frames = old_imagedata.shape[0] - expected_shape[0]
+                if diff_in_frames < expected_shape[0] / 2:
+                    imagedata[range(0, diff_in_frames + 1), :] = np.mean(np.array([old_imagedata[range(0, diff_in_frames + 1), :],old_imagedata[range(old_imagedata.shape[0] - diff_in_frames - 1, old_imagedata.shape[0]), :]]),axis=0)
+                    imagedata[range(diff_in_frames + 1, expected_shape[0]), :] = old_imagedata[range(diff_in_frames + 1, expected_shape[0])]
 
-            if diff_in_frames < expected_shape[0] / 2:
-                imagedata[range(0, diff_in_frames + 1), :] = np.mean(np.array([old_imagedata[range(0, diff_in_frames + 1), :],old_imagedata[range(old_imagedata.shape[0] - diff_in_frames - 1, old_imagedata.shape[0]), :]]),axis=0)
-                imagedata[range(diff_in_frames + 1, expected_shape[0]), :] = old_imagedata[range(diff_in_frames + 1, expected_shape[0])]
-
-            elif diff_in_frames > expected_shape[0] / 2:
-                count = int(np.floor(old_imagedata.shape[0] / expected_shape[0]))
-                remaining_diff = (old_imagedata.shape[0] - expected_shape[0] * count)
-                for index in range(0, count):
-                    imagedata[range(0, expected_shape[0]), :] = np.sum([imagedata, old_imagedata[range(index * expected_shape[0], (index + 1) * expected_shape[0])]],axis=0) / count
-                    imagedata[range(0, remaining_diff), :] = np.mean(np.array([old_imagedata[range(old_imagedata.shape[0] - remaining_diff, old_imagedata.shape[0]), :],imagedata[range(0, remaining_diff), :]]), axis=0)
-
-                print(['PADDING on file: ' + str(k) + 'Prev duration: ' + str(imagedata.shape[0]) + '  New duration: ' + str(imagedata.shape[0])])
-            else:
-                print(['Unchanged file: ' + str(k) + 'Prev duration: ' + str(old_imagedata.shape[0])])
+                elif diff_in_frames > expected_shape[0] / 2:
+                    count = int(np.floor(old_imagedata.shape[0] / expected_shape[0]))
+                    remaining_diff = (old_imagedata.shape[0] - expected_shape[0] * count)
+                    for index in range(0, count):
+                        imagedata[range(0, expected_shape[0]), :] = np.sum([imagedata, old_imagedata[range(index * expected_shape[0], (index + 1) * expected_shape[0])]],axis=0) / count
+                        imagedata[range(0, remaining_diff), :] = np.mean(np.array([old_imagedata[range(old_imagedata.shape[0] - remaining_diff, old_imagedata.shape[0]), :],imagedata[range(0, remaining_diff), :]]), axis=0)
 
         imagedata = np.reshape(imagedata, (1, imagedata.shape[0], imagedata.shape[1], 1))
 
@@ -331,17 +323,10 @@ def testdata(filelistpath, test_size):
 
     return outputs
 
-
-################################################
-#
-#   Model Creation
-#
-################################################
-
 if(with_augmentation == True):
-    train_generator = data_generator(train_filelist, BATCH_SIZE, False)
+    train_generator = data_generator(train_filelist, BATCH_SIZE, True)
 else:
-    train_generator = dataval_generator(train_filelist, BATCH_SIZE, False)
+    train_generator = dataval_generator(train_filelist, BATCH_SIZE, True)
 
 validation_generator = dataval_generator(val_filelist, BATCH_SIZE, False)
 test_generator = dataval_generator(test_filelist, BATCH_SIZE, False)
@@ -355,6 +340,11 @@ datagen = ImageDataGenerator(
     horizontal_flip=False,
     fill_mode="wrap")
 
+################################################
+#
+#   Model Creation
+#
+################################################
 if model_operation == 'new':
     model = Sequential()
     # augmentation generator
@@ -363,38 +353,39 @@ if model_operation == 'new':
     #preprocessing_function
 
     # convolution layers
-    model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(700, 80, 1), ))   # low: try different kernel_initializer
+    model.add(Conv2D(32, (5, 5), padding='same', input_shape=(700, 80, 1), ))   # low: try different kernel_initializer
+    model.add(LeakyReLU(alpha=.1))
     model.add(BatchNormalization())  # explore order of Batchnorm and activation
-    model.add(LeakyReLU(alpha=.001))
-    model.add(MaxPooling2D(pool_size=(3,3))) # experiment with using smaller pooling along frequency axis
-    model.add(Conv2D(16, (3, 3), padding='valid'))
+
+    model.add(Conv2D(16, (3, 3), padding='same'))
+    model.add(LeakyReLU(alpha=.1))
     model.add(BatchNormalization())
-    model.add(LeakyReLU(alpha=.001))
-    model.add(MaxPooling2D(pool_size=(3,3)))
-    model.add(Conv2D(16, (3, 1), padding='valid'))
+    model.add(MaxPooling2D(pool_size=(2,2)))
+
+    model.add(Conv2D(8, (3, 3), padding='same'))
+    model.add(LeakyReLU(alpha=.1))
     model.add(BatchNormalization())
+    model.add(MaxPooling2D(pool_size=(2,2)))
+
+    model.add(Conv2D(4, (3, 3), padding='same', kernel_regularizer=l2(0.1))) # drfault 0.01. Try 0.001 and 0.001, there is also an activity
     model.add(LeakyReLU(alpha=.001))
-    model.add(MaxPooling2D(pool_size=(3,1)))
-    model.add(Conv2D(16, (3, 1), padding='valid', kernel_regularizer=l2(0.01))) # drfault 0.01. Try 0.001 and 0.001
     model.add(BatchNormalization())
-    model.add(LeakyReLU(alpha=.001))
-    model.add(MaxPooling2D(pool_size=(3,1)))
+
+    model.add(MaxPooling2D(pool_size=(2,2)))
 
     # dense layers
     model.add(Flatten())
-    model.add(Dropout(0.5))
     model.add(Dense(256))
     model.add(BatchNormalization())
     model.add(LeakyReLU(alpha=.001))
-    model.add(Dropout(0.5))
     model.add(Dense(32))
     model.add(BatchNormalization())
     model.add(LeakyReLU(alpha=.001))# leaky relu value is very small experiment with bigger ones
-    model.add(Dropout(0.5)) # experiment with removing this dropout
+
     model.add(Dense(1,activation='sigmoid'))
 
 elif model_operation == 'load' or model_operation == 'test':
-    model = load_model('test_ckpt.h5')
+    model = load_model('backup/config5/birdvox/flmdl.h5')
 
 if model_operation == 'new' or model_operation == 'load':
     adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
@@ -430,29 +421,43 @@ y_pred = model.predict_generator(
     pred_generator,
     steps=my_test_steps)
 # Calculate total roc auc score
-score = roc_auc_score(y_test[0:int(my_test_steps*BATCH_SIZE)], y_pred[0:int(my_test_steps*BATCH_SIZE)])
-print("Total roc auc score = {0:0.4f}".format(score))
+#score = roc_auc_score(y_test[0:int(my_test_steps*BATCH_SIZE)], y_pred[0:int(my_test_steps*BATCH_SIZE)])
+#print("Total roc auc score = {0:0.4f}".format(score))
+# preds = clf.predict_proba(Xtest)[:,1]
+fpr, tpr, threshold = roc_curve(y_test[0:int(my_test_steps*BATCH_SIZE)], y_pred[0:int(my_test_steps*BATCH_SIZE)])
+roc_auc = auc(fpr, tpr)
+print("Total roc auc score = {0:0.4f}".format(roc_auc))
 
-#print(history.history)
-
-# Plotting
 """
-plt.figure(0)
+# method I: plt
+#import matplotlib.pyplot as plt
+
+#plt.figure(0)
+plt.title('Receiver Operating Characteristic')
+plt.plot(fpr, tpr, 'b', label='AUC = %0.2f' % roc_auc)
+plt.legend(loc='lower right')
+plt.plot([0, 1], [0, 1], 'r--')
+plt.xlim([0, 1])
+plt.ylim([0, 1])
+plt.ylabel('True Positive Rate')
+plt.xlabel('False Positive Rate')
+plt.savefig('ROC_curve.png')
+
+#plt.figure(1)
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
 plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.show()
+plt.savefig('loss.png')
 
-
-plt.figure(1)
+#plt.figure(2)
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
 plt.title('Accuracy')
 plt.ylabel('Accuracy %')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.show()
+plt.savefig('acc.png')
 """
