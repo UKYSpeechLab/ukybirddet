@@ -96,12 +96,23 @@ k_TRAIN_FILE = 'train_file_path'
 k_VAL_SIZE = 'validate_size'
 k_TEST_SIZE = 'test_size'
 k_TRAIN_SIZE = 'train_size'
+k_CLASS_WEIGHT = 'class_weight'
 
 # Declare the dictionaries to represent the data sets
-d_birdVox = {k_VAL_FILE: 'val_B', k_TEST_FILE: 'test_B', k_TRAIN_FILE: 'train_B', k_VAL_SIZE: 1000.0, k_TEST_SIZE: 3000.0, k_TRAIN_SIZE: 16000.0}
-d_warblr = {k_VAL_FILE: 'val_W', k_TEST_FILE: 'test_W', k_TRAIN_FILE: 'train_W', k_VAL_SIZE: 400.0, k_TEST_SIZE: 1200.0, k_TRAIN_SIZE: 6400.0}
-d_freefield = {k_VAL_FILE: 'val_F', k_TEST_FILE: 'test_F', k_TRAIN_FILE: 'train_F', k_VAL_SIZE: 385.0, k_TEST_SIZE: 1153.0, k_TRAIN_SIZE: 6152.0}
-d_fold1 = {k_VAL_FILE: 'test_BF', k_TEST_FILE: 'val_1', k_TRAIN_FILE: 'train_BF', k_VAL_SIZE: 4153.0, k_TEST_SIZE: 8000.0, k_TRAIN_SIZE: 22152.0}
+d_birdVox = {k_VAL_FILE: 'val_B', k_TEST_FILE: 'test_B', k_TRAIN_FILE: 'train_B',
+             k_VAL_SIZE: 1000.0, k_TEST_SIZE: 3000.0, k_TRAIN_SIZE: 16000.0,
+             k_CLASS_WEIGHT: {0: 0.50,1: 0.50}}
+d_warblr = {k_VAL_FILE: 'val_W', k_TEST_FILE: 'test_W', k_TRAIN_FILE: 'train_W',
+            k_VAL_SIZE: 400.0, k_TEST_SIZE: 1200.0, k_TRAIN_SIZE: 6400.0,
+            #k_CLASS_WEIGHT: {0: 0.75, 1: 0.25}}
+            k_CLASS_WEIGHT: {0: 0.5, 1: 0.5}}
+d_freefield = {k_VAL_FILE: 'val_F', k_TEST_FILE: 'test_F', k_TRAIN_FILE: 'train_F',
+               k_VAL_SIZE: 385.0, k_TEST_SIZE: 1153.0, k_TRAIN_SIZE: 6152.0,
+               #k_CLASS_WEIGHT: {0: 0.25, 1: 0.75}}
+            k_CLASS_WEIGHT: {0: 0.5, 1: 0.5}}
+d_fold1 = {k_VAL_FILE: 'test_BF', k_TEST_FILE: 'val_1', k_TRAIN_FILE: 'train_BF',
+           k_VAL_SIZE: 4153.0, k_TEST_SIZE: 8000.0, k_TRAIN_SIZE: 22152.0,
+           k_CLASS_WEIGHT: {0: 0.50, 1: 0.50}}
 # Declare the training, validation, and testing sets here using the dictionaries defined above.
 # Set these variables to change the data set.
 training_set = d_birdVox
@@ -353,39 +364,38 @@ if model_operation == 'new':
     #preprocessing_function
 
     # convolution layers
-    model.add(Conv2D(32, (5, 5), padding='same', input_shape=(700, 80, 1), ))   # low: try different kernel_initializer
-    model.add(LeakyReLU(alpha=.1))
+    model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(700, 80, 1), ))  # low: try different kernel_initializer
     model.add(BatchNormalization())  # explore order of Batchnorm and activation
-
-    model.add(Conv2D(16, (3, 3), padding='same'))
-    model.add(LeakyReLU(alpha=.1))
-    model.add(BatchNormalization())
-    model.add(MaxPooling2D(pool_size=(2,2)))
-
-    model.add(Conv2D(8, (3, 3), padding='same'))
-    model.add(LeakyReLU(alpha=.1))
-    model.add(BatchNormalization())
-    model.add(MaxPooling2D(pool_size=(2,2)))
-
-    model.add(Conv2D(4, (3, 3), padding='same', kernel_regularizer=l2(0.1))) # drfault 0.01. Try 0.001 and 0.001, there is also an activity
     model.add(LeakyReLU(alpha=.001))
+    model.add(MaxPooling2D(pool_size=(3, 3)))  # experiment with using smaller pooling along frequency axis
+    model.add(Conv2D(16, (3, 3), padding='valid'))
     model.add(BatchNormalization())
-
-    model.add(MaxPooling2D(pool_size=(2,2)))
+    model.add(LeakyReLU(alpha=.001))
+    model.add(MaxPooling2D(pool_size=(3, 3)))
+    model.add(Conv2D(16, (3, 1), padding='valid'))
+    model.add(BatchNormalization())
+    model.add(LeakyReLU(alpha=.001))
+    model.add(MaxPooling2D(pool_size=(3, 1)))
+    model.add(Conv2D(16, (3, 1), padding='valid', kernel_regularizer=l2(0.01)))  # drfault 0.01. Try 0.001 and 0.001
+    model.add(BatchNormalization())
+    model.add(LeakyReLU(alpha=.001))
+    model.add(MaxPooling2D(pool_size=(3, 1)))
 
     # dense layers
     model.add(Flatten())
+    model.add(Dropout(0.5))
     model.add(Dense(256))
     model.add(BatchNormalization())
     model.add(LeakyReLU(alpha=.001))
+    model.add(Dropout(0.5))
     model.add(Dense(32))
     model.add(BatchNormalization())
-    model.add(LeakyReLU(alpha=.001))# leaky relu value is very small experiment with bigger ones
-
-    model.add(Dense(1,activation='sigmoid'))
+    model.add(LeakyReLU(alpha=.001))  # leaky relu value is very small experiment with bigger ones
+    model.add(Dropout(0.5))  # experiment with removing this dropout
+    model.add(Dense(1, activation='sigmoid'))
 
 elif model_operation == 'load' or model_operation == 'test':
-    model = load_model('backup/config5/birdvox/flmdl.h5')
+    model = load_model('backup/config4/birdvox/flmdl.h5')
 
 if model_operation == 'new' or model_operation == 'load':
     adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
@@ -408,6 +418,7 @@ if model_operation == 'new' or model_operation == 'load':
         validation_data=validation_generator,
         validation_steps=my_val_steps,
         callbacks= [checkPoint, reduceLR, csvLogger],
+        class_weight= training_set[k_CLASS_WEIGHT],
         verbose=True)
 
     model.save(final_model_name)
@@ -428,11 +439,27 @@ fpr, tpr, threshold = roc_curve(y_test[0:int(my_test_steps*BATCH_SIZE)], y_pred[
 roc_auc = auc(fpr, tpr)
 print("Total roc auc score = {0:0.4f}".format(roc_auc))
 
-"""
-# method I: plt
-#import matplotlib.pyplot as plt
 
-#plt.figure(0)
+# method I: plt
+plt.figure(0)
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('loss.png')
+
+plt.figure(1)
+plt.plot(history.history['acc'])
+plt.plot(history.history['val_acc'])
+plt.title('Accuracy')
+plt.ylabel('Accuracy %')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('acc.png')
+
+plt.figure(2)
 plt.title('Receiver Operating Characteristic')
 plt.plot(fpr, tpr, 'b', label='AUC = %0.2f' % roc_auc)
 plt.legend(loc='lower right')
@@ -444,20 +471,5 @@ plt.xlabel('False Positive Rate')
 plt.savefig('ROC_curve.png')
 
 #plt.figure(1)
-plt.plot(history.history['loss'])
-plt.plot(history.history['val_loss'])
-plt.title('model loss')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
-plt.savefig('loss.png')
 
-#plt.figure(2)
-plt.plot(history.history['acc'])
-plt.plot(history.history['val_acc'])
-plt.title('Accuracy')
-plt.ylabel('Accuracy %')
-plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
-plt.savefig('acc.png')
-"""
+
