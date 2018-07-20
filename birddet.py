@@ -33,8 +33,8 @@ from keras.callbacks import EarlyStopping
 ################################################
 
 #checking mfc features
-#SPECTPATH = '/audio/audio/mfcfeatures/'
-SPECTPATH = '/audio/audio/workingfiles/spect/'
+SPECTPATH = '/audio/audio/dataexchange/win_32ms/'
+#SPECTPATH = '/audio/audio/workingfiles/spect/'
 #SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
 #SPECTPATH = 'C:\Sidrah\DCASE2018\dataset\spect\'
 # path to spectrogram files stored in separate directories for each dataset
@@ -56,27 +56,28 @@ FILELIST = '/audio/audio/workingfiles/filelists/'
 # create this directory in main project directory
 
 dataset = ['BirdVox-DCASE-20k.csv', 'ff1010bird.csv', 'warblrb10k.csv']
+#dataset = (['Chernobyl', 'PolandNFC', 'warblrb10k-eval'])
 #features =['h5','mfc']
-logfile_name = 'backup/config5/birdvox/logfile.log'
-checkpoint_model_name = 'backup/config5/birdvox/ckpt.h5'
-final_model_name = 'backup/config5/birdvox/flmdl.h5'
+logfile_name = 'backup/mfc_model/win_32ms/trainedonwarblrb/with_clswt/logfile.log'
+checkpoint_model_name = 'backup/mfc_model/win_32ms/trainedonwarblrb/with_clswt/ckpt.h5'
+final_model_name = 'backup/mfc_model/win_32ms/trainedonwarblrb/with_clswt/flmdl.h5'
 
 BATCH_SIZE = 16
-EPOCH_SIZE = 5
+EPOCH_SIZE = 8
 AUGMENT_SIZE = 8
 with_augmentation = False
-features='h5'
+features='mfc'
 model_operation = 'new'
 # model_operations : 'new', 'load', 'test'
-shape = (700, 80)
+shape = (624, 160)
 #shape = (1669, 160)
-expected_shape = (700, 80)
+expected_shape = (624, 160)
 spect = np.zeros(shape)
 label = np.zeros(1)
 
 # Callbacks for logging during epochs
 reduceLR = ReduceLROnPlateau(factor=0.2, patience=5, min_lr=0.00001)
-checkPoint = ModelCheckpoint(filepath = checkpoint_model_name, save_best_only=True)   # criterion = 'val_acc', mode = 'max'
+checkPoint = ModelCheckpoint(filepath = checkpoint_model_name, save_best_only=True)   # monitor = 'val_acc', mode = 'max'
 csvLogger = CSVLogger(logfile_name, separator=',', append=False)
 #earlyStopping = EarlyStopping(patience=5)
 
@@ -104,20 +105,20 @@ d_birdVox = {k_VAL_FILE: 'val_B', k_TEST_FILE: 'test_B', k_TRAIN_FILE: 'train_B'
              k_CLASS_WEIGHT: {0: 0.50,1: 0.50}}
 d_warblr = {k_VAL_FILE: 'val_W', k_TEST_FILE: 'test_W', k_TRAIN_FILE: 'train_W',
             k_VAL_SIZE: 400.0, k_TEST_SIZE: 1200.0, k_TRAIN_SIZE: 6400.0,
-            #k_CLASS_WEIGHT: {0: 0.75, 1: 0.25}}
-            k_CLASS_WEIGHT: {0: 0.5, 1: 0.5}}
+            k_CLASS_WEIGHT: {0: 0.75, 1: 0.25}}
+            #k_CLASS_WEIGHT: {0: 0.5, 1: 0.5}}
 d_freefield = {k_VAL_FILE: 'val_F', k_TEST_FILE: 'test_F', k_TRAIN_FILE: 'train_F',
                k_VAL_SIZE: 385.0, k_TEST_SIZE: 1153.0, k_TRAIN_SIZE: 6152.0,
-               #k_CLASS_WEIGHT: {0: 0.25, 1: 0.75}}
-            k_CLASS_WEIGHT: {0: 0.5, 1: 0.5}}
-d_fold1 = {k_VAL_FILE: 'test_BF', k_TEST_FILE: 'val_1', k_TRAIN_FILE: 'train_BF',
+               k_CLASS_WEIGHT: {0: 0.25, 1: 0.75}}
+            #k_CLASS_WEIGHT: {0: 0.5, 1: 0.5}}
+d_fold1 = {k_VAL_FILE: 'test_W', k_TEST_FILE: 'val_1', k_TRAIN_FILE: 'train_W',
            k_VAL_SIZE: 4153.0, k_TEST_SIZE: 8000.0, k_TRAIN_SIZE: 22152.0,
            k_CLASS_WEIGHT: {0: 0.50, 1: 0.50}}
 # Declare the training, validation, and testing sets here using the dictionaries defined above.
 # Set these variables to change the data set.
-training_set = d_birdVox
-validation_set = d_birdVox
-test_set = d_birdVox
+training_set = d_warblr
+validation_set = d_warblr
+test_set = d_warblr
 
 # Grab the file lists and sizes from the corresponding data sets.
 train_filelist = FILELIST + training_set[k_TRAIN_FILE]
@@ -136,7 +137,7 @@ TEST_SIZE = test_set[k_TEST_SIZE]
 ################################################
 
 # use this generator when augmentation is needed
-def data_generator(filelistpath, batch_size=32, shuffle=False):
+def data_generator(filelistpath, batch_size=16, shuffle=False):
     batch_index = 0
     image_index = -1
     filelist = open(filelistpath, 'r')
@@ -182,8 +183,9 @@ def data_generator(filelistpath, batch_size=32, shuffle=False):
             imagedata = (imagedata + 15.0966)/(15.0966 + 2.25745)
         elif features == 'mfc':
             htk_reader = HTKFile()
-            htk_reader.load(SPECTPATH + file_id.rstrip('.wav') + '.mfc')
+            htk_reader.load(SPECTPATH + file_id[:-4] + '.mfc')
             imagedata = np.array(htk_reader.data)
+            imagedata = imagedata / 18.0
 
         imagedata = np.reshape(imagedata, (1, imagedata.shape[0], imagedata.shape[1], 1))
 
@@ -252,8 +254,9 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
 
         elif features == 'mfc':
             htk_reader = HTKFile()
-            htk_reader.load(SPECTPATH + file_id.rstrip('.wav') + '.mfc')
+            htk_reader.load(SPECTPATH + file_id[:-4] + '.mfc')
             imagedata = np.array(htk_reader.data)
+            imagedata = imagedata/18.0
 
         # processing files with shapes other than expected shape in warblr dataset
 
@@ -364,7 +367,7 @@ if model_operation == 'new':
     #preprocessing_function
 
     # convolution layers
-    model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(700, 80, 1), ))  # low: try different kernel_initializer
+    model.add(Conv2D(16, (3, 3), padding='valid', input_shape=(624, 160, 1), ))  # low: try different kernel_initializer
     model.add(BatchNormalization())  # explore order of Batchnorm and activation
     model.add(LeakyReLU(alpha=.001))
     model.add(MaxPooling2D(pool_size=(3, 3)))  # experiment with using smaller pooling along frequency axis
@@ -372,11 +375,11 @@ if model_operation == 'new':
     model.add(BatchNormalization())
     model.add(LeakyReLU(alpha=.001))
     model.add(MaxPooling2D(pool_size=(3, 3)))
-    model.add(Conv2D(16, (3, 1), padding='valid'))
+    model.add(Conv2D(16, (3, 3), padding='valid'))
     model.add(BatchNormalization())
     model.add(LeakyReLU(alpha=.001))
     model.add(MaxPooling2D(pool_size=(3, 1)))
-    model.add(Conv2D(16, (3, 1), padding='valid', kernel_regularizer=l2(0.01)))  # drfault 0.01. Try 0.001 and 0.001
+    model.add(Conv2D(16, (3, 3), padding='valid', kernel_regularizer=l2(0.01)))  # drfault 0.01. Try 0.001 and 0.001
     model.add(BatchNormalization())
     model.add(LeakyReLU(alpha=.001))
     model.add(MaxPooling2D(pool_size=(3, 1)))
@@ -395,7 +398,7 @@ if model_operation == 'new':
     model.add(Dense(1, activation='sigmoid'))
 
 elif model_operation == 'load' or model_operation == 'test':
-    model = load_model('backup/config4/birdvox/flmdl.h5')
+    model = load_model('backup/mfc_model/win_32ms/trainedonwarblr/with_clswt/ckpt.h5')
 
 if model_operation == 'new' or model_operation == 'load':
     adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
@@ -439,7 +442,7 @@ fpr, tpr, threshold = roc_curve(y_test[0:int(my_test_steps*BATCH_SIZE)], y_pred[
 roc_auc = auc(fpr, tpr)
 print("Total roc auc score = {0:0.4f}".format(roc_auc))
 
-
+"""
 # method I: plt
 plt.figure(0)
 plt.plot(history.history['loss'])
@@ -469,7 +472,6 @@ plt.ylim([0, 1])
 plt.ylabel('True Positive Rate')
 plt.xlabel('False Positive Rate')
 plt.savefig('ROC_curve.png')
-
-#plt.figure(1)
+"""
 
 
