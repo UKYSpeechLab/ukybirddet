@@ -7,7 +7,7 @@ import csv
 import numpy as np
 import random
 import PIL.Image
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from HTK import HTKFile
 
 from sklearn.metrics import roc_auc_score, roc_curve, auc
@@ -34,7 +34,7 @@ from keras.callbacks import EarlyStopping
 
 #checking mfc features
 #SPECTPATH = '/audio/audio/mfcfeatures/'
-SPECTPATH = '/audio/audio/workingfiles/spect/'
+SPECTPATH = 'spect/'
 #SPECTPATH = '/home/sidrah/DL/bulbul2018/workingfiles/spect/'
 #SPECTPATH = 'C:\Sidrah\DCASE2018\dataset\spect\'
 # path to spectrogram files stored in separate directories for each dataset
@@ -43,26 +43,31 @@ SPECTPATH = '/audio/audio/workingfiles/spect/'
 #       ff1010bird
 #       warblrb10k
 
-LABELPATH = '/audio/audio/labels/'
+LABELPATH = 'labels/'
 #LABELPATH = '/home/sidrah/DL/bulbul2018/labels/'
 #LABELPATH = 'C:\Sidrah\DCASE2018\dataset\labels\'
 # path to label files stored in a single directory named accordingly for each dataset
 # -labels/
 #       BirdVox-DCASE-20k.csv, ff1010bird.csv, warblrb10k.csv
 
-FILELIST = '/audio/audio/workingfiles/filelists/'
+FILELIST = 'filelists/'
 #FILELIST = '/home/sidrah/DL/bulbul2018/workingfiles/filelists/'
 #FILELIST = 'C:\Sidrah\DCASE2018\dataset\filelists'
 # create this directory in main project directory
 
 dataset = ['BirdVox-DCASE-20k.csv', 'ff1010bird.csv', 'warblrb10k.csv']
 #features =['h5','mfc']
-logfile_name = 'backup/config5/birdvox/logfile.log'
-checkpoint_model_name = 'backup/config5/birdvox/ckpt.h5'
-final_model_name = 'backup/config5/birdvox/flmdl.h5'
+
+#logfile_name = 'backup/config5/birdvox/logfile.log'
+#checkpoint_model_name = 'backup/config5/birdvox/ckpt.h5'
+#final_model_name = 'backup/config5/birdvox/flmdl.h5'
+
+logfile_name = 'working_files/logfile.log'
+checkpoint_model_name = 'working_files/ckpt.h5'
+final_model_name = 'working_files/flmdl.h5'
 
 BATCH_SIZE = 16
-EPOCH_SIZE = 5
+EPOCH_SIZE = 1
 AUGMENT_SIZE = 8
 with_augmentation = False
 features='h5'
@@ -290,6 +295,8 @@ def dataval_generator(filelistpath, batch_size=32, shuffle=False):
             inputs = [spect_batch]
             outputs = [label_batch]
             yield inputs, outputs
+
+
 ################################################
 #
 #   ROC Label Generation
@@ -339,6 +346,7 @@ datagen = ImageDataGenerator(
     height_shift_range=0.9,
     horizontal_flip=False,
     fill_mode="wrap")
+
 
 ################################################
 #

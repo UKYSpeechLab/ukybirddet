@@ -1,2 +1,6 @@
 .DS_Store
 .idea/
+spect/
+filelists/
+__pycache__/
+labels/
