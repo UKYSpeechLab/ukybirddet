@@ -22,3 +22,9 @@ There are three datasets: birdvox, ff, and warblr, represented by the dictionari
 `validation_set = d_ff`
 
 `test_set = d_birdVox`
+
+**Domain Adaptation:**
+
+We are following the approach outlined in http://www.aaai.org/ocs/index.php/AAAI/AAAI16/paper/download/12443/11842
+
+To see it in action, check out `adapt.m`. It is currently set up to compute the covariance matrices for the Warlbr, FarField, and BirdVox datasets. These matrices are output as `.h5` files.
