@@ -69,8 +69,9 @@ if ~exist(target_cov_name, 'file')
     for index = 1 : BATCH_SIZE
         fn = spex_path_prefix + target_dataset_name + '/' + (filenames(index,:)) + '.wav.h5';
         readdata = hdf5read(char(fn), '/features');
-        N = size(readdata,2);
-        matdata(:,(index-1) * N+1 : index * N) = readdata;
+        normalized = normalize_features(readdata);
+        N = size(normalized,2);
+        matdata(:,(index-1) * N+1 : index * N) = normalized;
     end
     
     cov_t = cov(matdata');
@@ -107,8 +108,9 @@ for index = 1:length(source_datasets)
     for j = 1 : BATCH_SIZE
         fn = spex_path_prefix + source_dataset_name + '/' + (filenames(j,:)) + '.wav.h5';
         readdata = hdf5read(char(fn), '/features');
-        N = size(readdata,2);
-        matdata(:,(j-1) * N+1 : j * N) = readdata;
+        normalized = normalize_features(readdata);
+        N = size(normalized,2);
+        matdata(:,(j-1) * N+1 : j * N) = normalized;
     end
 
     %   COMPUTE TRANSFORM MATRIX AND WRITE
@@ -122,4 +124,34 @@ for index = 1:length(source_datasets)
 
     hdf5write(source_datasets(index).output_matrix_name, '/cov', A);
     
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% This function will return a matrix. It is expecting `mat` to be a matrix
+% of features where each feature is indexed as a column (i.e., 700 X 80)
+% would refer to 700 examples and 80 features.
+%
+% We will normalize all of the features so that they sum to 1 by taking
+% summing over the features and creating a scale-vector, `lambda`. We will 
+% then repeat the scale vector to form a matrix of the same size as the
+% input parameter matrix. Next, we scale the input parameter matrix by
+% dividing it by the scaling matrix. We then take the z-score of the scaled
+% input and return the result.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function A = normalize_features(mat)
+
+    % Sum the features.
+    lambda = sum(mat, 2);
+    
+    % Tile the lambda vector (this is mainly for easy division).
+    lambda_extended = repmat(lambda, 1, size(mat, 2));
+    
+    % Scale the input matrix
+    scaled = mat ./ lambda_extended; 
+
+    % Compute z-scale
+    A = zscore(scaled, 1);
 end
