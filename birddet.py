@@ -101,11 +101,12 @@ k_TRAIN_FILE = 'train_file_path'
 k_VAL_SIZE = 'validate_size'
 k_TEST_SIZE = 'test_size'
 k_TRAIN_SIZE = 'train_size'
+k_TRANSFORM_MATRIX = 'transform_matrix'
 
 # Declare the dictionaries to represent the data sets
-d_birdVox = {k_VAL_FILE: 'val_B', k_TEST_FILE: 'test_B', k_TRAIN_FILE: 'train_B', k_VAL_SIZE: 1000.0, k_TEST_SIZE: 3000.0, k_TRAIN_SIZE: 16000.0}
-d_warblr = {k_VAL_FILE: 'val_W', k_TEST_FILE: 'test_W', k_TRAIN_FILE: 'train_W', k_VAL_SIZE: 400.0, k_TEST_SIZE: 1200.0, k_TRAIN_SIZE: 6400.0}
-d_freefield = {k_VAL_FILE: 'val_F', k_TEST_FILE: 'test_F', k_TRAIN_FILE: 'train_F', k_VAL_SIZE: 385.0, k_TEST_SIZE: 1153.0, k_TRAIN_SIZE: 6152.0}
+d_birdVox = {k_VAL_FILE: 'val_B', k_TEST_FILE: 'test_B', k_TRAIN_FILE: 'train_B', k_VAL_SIZE: 1000.0, k_TEST_SIZE: 3000.0, k_TRAIN_SIZE: 16000.0, k_TRANSFORM_MATRIX: 'transform_source_BirdVox-DCASE-20k.h5'}
+d_warblr = {k_VAL_FILE: 'val_W', k_TEST_FILE: 'test_W', k_TRAIN_FILE: 'train_W', k_VAL_SIZE: 400.0, k_TEST_SIZE: 1200.0, k_TRAIN_SIZE: 6400.0, k_TRANSFORM_MATRIX: 'transform_target_warblrb10k.h5'}
+d_freefield = {k_VAL_FILE: 'val_F', k_TEST_FILE: 'test_F', k_TRAIN_FILE: 'train_F', k_VAL_SIZE: 385.0, k_TEST_SIZE: 1153.0, k_TRAIN_SIZE: 6152.0, k_TRANSFORM_MATRIX: 'transform_source_ff1010bird.h5'}
 d_fold1 = {k_VAL_FILE: 'test_BF', k_TEST_FILE: 'val_1', k_TRAIN_FILE: 'train_BF', k_VAL_SIZE: 4153.0, k_TEST_SIZE: 8000.0, k_TRAIN_SIZE: 22152.0}
 # Declare the training, validation, and testing sets here using the dictionaries defined above.
 # Set these variables to change the data set.

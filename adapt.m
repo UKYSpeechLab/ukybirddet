@@ -4,7 +4,10 @@
 % source_datasets variable and compute the transform matrix that is
 % required by the covariance adaptation method. The transform matrix is
 % output for each dataset in an appropriately named .h5 file in the
-% directory that this script is placed. 
+% directory that this script is placed. The script will compute the final
+% transform for a given dataset <var: ITERATIONS> number of times. You can
+% set the parameter DEBUG to true so that the differences between
+% successive transform matrices are plotted.
 %
 % A number of parameters need to be changed to fit your development
 % environment. They are all listed in the GLOBAL PARAMETERS section.
@@ -17,9 +20,17 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+close all;
+clear;
+
 %
 %   GLOBAL PARAMETERS
 %
+
+% If DEBUG is set to true, the script will output images corresponding to
+% the differences between the output matrices of sequential passes (the 
+% number of which is defined in ITERATIONS). 
+DEBUG = true;
 
 % BATCH_SIZE sets the number of spectrograms that will be "merged" into
 % one, of which we will then compute the covariance matrix.
@@ -50,6 +61,8 @@ d_ff.dataset_name = "ff1010bird";
 d_ff.output_matrix_name = char(source_cov_name_base + d_ff.dataset_name + ".h5");
 
 source_datasets = [d_birdvox, d_ff];
+
+ITERATIONS = 8;
 
 %
 %   COMPUTE COVARIANCE OF TARGET SET
@@ -90,7 +103,7 @@ c_t = hdf5read(target_cov_name, '/cov');
 for index = 1:length(source_datasets)
     
     source_dataset_name = source_datasets(index).dataset_name;
-    
+
     %   PARSE DATA SET FILE NAMES
 
     file = importdata(flist_path_prefix + source_dataset_name + '.csv');
@@ -102,27 +115,58 @@ for index = 1:length(source_datasets)
     elseif(source_dataset_name=='ff1010bird')
         filenames=cellfun(@str2num, filelist); 
     end
+ 
+    for iter = 1:ITERATIONS
+        
+        % Shuffle filenames by randomly selecting BATCH_SIZE files
+        rand_selected_files = datasample(filenames, BATCH_SIZE);
+        %disp(rand_selected_files(1:3,:));
 
-    %   COLLECT SPECTROGRAMS INTO ONE MATRIX
+        %   COLLECT SPECTROGRAMS INTO ONE MATRIX
 
-    for j = 1 : BATCH_SIZE
-        fn = spex_path_prefix + source_dataset_name + '/' + (filenames(j,:)) + '.wav.h5';
-        readdata = hdf5read(char(fn), '/features');
-        normalized = normalize_features(readdata);
-        N = size(normalized,2);
-        matdata(:,(j-1) * N+1 : j * N) = normalized;
+        for j = 1 : size(rand_selected_files, 1)
+            fn = spex_path_prefix + source_dataset_name + '/' + (rand_selected_files(j,:)) + '.wav.h5';
+            readdata = hdf5read(char(fn), '/features');
+            normalized = normalize_features(readdata);
+            N = size(normalized,2);
+            matdata(:,(j-1) * N+1 : j * N) = normalized;
+        end
+
+        %   COMPUTE TRANSFORM MATRIX AND WRITE
+
+        % Compute transform of source distribution and fetch covariance of 
+        % target distribution from file
+        cov_s = cov(matdata');
+        c_s_unscaled = cov_s + eye(size(cov_s, 2));
+        c_s = c_s_unscaled ^ (-1/2);
+        A = c_s * c_t; % This is the transform matrix.
+
+        % Compare A with the previous matrix
+        if iter == 1
+            current_mat = A;
+        else
+            difference = current_mat - A;
+            %fprintf('%s: Difference from ITER %d and ITER %d: %f\n', source_dataset_name, iter - 1, iter, mean(mean(difference)));
+            current_mat = A;
+        end
+        
+        hdf5write(source_datasets(index).output_matrix_name, '/cov', A);
+        
+        h = figure(index);
+        %title('Differences of Covariance Transformations for ' + source_dataset_name);
+        
+        % Debug differences with subplots
+        if DEBUG
+            if iter ~= 1
+                subplot(ceil(ITERATIONS / 2), 2, iter - 1);
+                imagesc(difference);
+                title({source_dataset_name, 'Pass' num2str(iter)});
+                colorbar;
+            end
+        end
+    
     end
-
-    %   COMPUTE TRANSFORM MATRIX AND WRITE
-
-    % Compute transform of source distribution and fetch covariance of 
-    % target distribution from file
-    cov_s = cov(matdata');
-    c_s_unscaled = cov_s + eye(size(cov_s, 2));
-    c_s = c_s_unscaled ^ (-1/2);
-    A = c_s * c_t; % This is the transform matrix.
-
-    hdf5write(source_datasets(index).output_matrix_name, '/cov', A);
+    
     
 end
 
