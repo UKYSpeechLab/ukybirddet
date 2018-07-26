@@ -41,8 +41,10 @@ BATCH_SIZE = 32;
 target_dataset_name = "warblrb10k";
 
 % path prefixes should be the paths to the specified object
-spex_path_prefix = '~/Documents/DCASE2018/tensorflow/ukybirddet/spect/';
-flist_path_prefix = '~/Documents/DCASE2018/tensorflow/ukybirddet/labels/';
+%spex_path_prefix = '~/Documents/DCASE2018/tensorflow/ukybirddet/spect/';
+%flist_path_prefix = '~/Documents/DCASE2018/tensorflow/ukybirddet/labels/';
+spex_path_prefix = '/home/sidrah/DL/bulbul2018/workingfiles/spect/';
+flist_path_prefix = '/home/sidrah/DL/bulbul2018/labels/';
 
 % The file name for the target covariance matrix. If it doesn't exist, set
 % this parameter and one will be created with the name you specify. If the
@@ -60,7 +62,13 @@ d_birdvox.output_matrix_name = char(source_cov_name_base + d_birdvox.dataset_nam
 d_ff.dataset_name = "ff1010bird";
 d_ff.output_matrix_name = char(source_cov_name_base + d_ff.dataset_name + ".h5");
 
-source_datasets = [d_birdvox, d_ff];
+d_chern.dataset_name = "Chernobyl";
+d_chern.output_matrix_name = char(source_cov_name_base + d_chern.dataset_name + ".h5");
+
+d_poland.dataset_name = "PolandNFC";
+d_poland.output_matrix_name = char(source_cov_name_base + d_poland.dataset_name + ".h5");
+
+source_datasets = [d_birdvox, d_ff, d_chern, d_poland];
 
 ITERATIONS = 8;
 
@@ -78,9 +86,10 @@ if ~exist(target_cov_name, 'file')
     filelist = file.textdata(:, 1);
     filelist(1) = [];
     filenames=cell2mat(filelist);
-    
+        
     for index = 1 : BATCH_SIZE
         fn = spex_path_prefix + target_dataset_name + '/' + (filenames(index,:)) + '.wav.h5';
+        
         readdata = hdf5read(char(fn), '/features');
         normalized = normalize_features(readdata);
         N = size(normalized,2);
@@ -110,11 +119,15 @@ for index = 1:length(source_datasets)
     filelist = file.textdata(:, 1);
     filelist(1) = [];
 
-    if(source_dataset_name == 'BirdVox-DCASE-20k' || source_dataset_name == 'warblrb10k')
-        filenames=cell2mat(filelist);
-    elseif(source_dataset_name=='ff1010bird')
-        filenames=cellfun(@str2num, filelist); 
-    end
+    %if(source_dataset_name == 'BirdVox-DCASE-20k' || source_dataset_name == 'warblrb10k' || source_dataset_name == 'Chernobyl')
+    %    filenames=cell2mat(filelist);
+    %elseif(source_dataset_name=='ff1010bird')
+    %    filenames=cellfun(@str2num, filelist); 
+    %elseif(source_dataset_name=='PolandNFC')
+    %    filenames=char(filelist); 
+    filenames=char(filelist);
+    filenames=strtrim(filenames);
+    %end
  
     for iter = 1:ITERATIONS
         
@@ -125,7 +138,12 @@ for index = 1:length(source_datasets)
         %   COLLECT SPECTROGRAMS INTO ONE MATRIX
 
         for j = 1 : size(rand_selected_files, 1)
-            fn = spex_path_prefix + source_dataset_name + '/' + (rand_selected_files(j,:)) + '.wav.h5';
+            if(source_dataset_name == 'BirdVox-DCASE-20k' || source_dataset_name == 'ff1010bird')
+                fn = spex_path_prefix + source_dataset_name + '/' + strtrim(rand_selected_files(j,:)) + '.wav.h5';
+            elseif(source_dataset_name == 'Chernobyl' || source_dataset_name == 'PolandNFC')
+                fn = spex_path_prefix + source_dataset_name + '/' + strtrim(rand_selected_files(j,:)) + '.h5';
+            end
+            
             readdata = hdf5read(char(fn), '/features');
             normalized = normalize_features(readdata);
             N = size(normalized,2);
