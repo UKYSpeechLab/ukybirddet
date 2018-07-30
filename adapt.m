@@ -34,7 +34,7 @@ DEBUG = true;
 
 % BATCH_SIZE sets the number of spectrograms that will be "merged" into
 % one, of which we will then compute the covariance matrix.
-BATCH_SIZE = 32;
+BATCH_SIZE = 128;
 
 % Set the target dataset. This set will be used to compute the covaraince
 % matrix for the target.
@@ -45,6 +45,9 @@ target_dataset_name = "warblrb10k";
 %flist_path_prefix = '~/Documents/DCASE2018/tensorflow/ukybirddet/labels/';
 spex_path_prefix = '/home/sidrah/DL/bulbul2018/workingfiles/spect/';
 flist_path_prefix = '/home/sidrah/DL/bulbul2018/labels/';
+
+features = 'h5';
+% can be h5 or mfc
 
 % The file name for the target covariance matrix. If it doesn't exist, set
 % this parameter and one will be created with the name you specify. If the
@@ -88,16 +91,21 @@ if ~exist(target_cov_name, 'file')
     filenames=cell2mat(filelist);
         
     for index = 1 : BATCH_SIZE
-        fn = spex_path_prefix + target_dataset_name + '/' + (filenames(index,:)) + '.wav.h5';
-        
-        readdata = hdf5read(char(fn), '/features');
+        if(strcmp(features,'h5'))
+            fn = spex_path_prefix + target_dataset_name + '/' + (filenames(index,:)) + '.wav.h5';        
+            readdata = hdf5read(char(fn), '/features');
+            readdata = readdata';
+        elseif(strcmp(features, 'mfc'))
+            fn = spex_path_prefix + target_dataset_name + '/' + (filenames(index,:)) + '.mfc';    
+            readdata = readhtk('fn');
+        end
         normalized = normalize_features(readdata);
-        N = size(normalized,2);
-        matdata(:,(index-1) * N+1 : index * N) = normalized;
+        N = size(normalized,1);
+        matdata((index-1) * N+1 : index * N,:) = normalized;
     end
     
-    cov_t = cov(matdata');
-    c_t_unscaled = cov_t + eye(size(cov_t(2)));
+    cov_t = cov(matdata);
+    c_t_unscaled = cov_t + eye(size(cov_t, 2));
     c_t = c_t_unscaled ^ (1/2); 
     hdf5write(target_cov_name, '/cov', c_t);
     
@@ -144,17 +152,25 @@ for index = 1:length(source_datasets)
                 fn = spex_path_prefix + source_dataset_name + '/' + strtrim(rand_selected_files(j,:)) + '.h5';
             end
             
-            readdata = hdf5read(char(fn), '/features');
+            if(strcmp(features,'h5'))
+                fn = spex_path_prefix + target_dataset_name + '/' + (filenames(index,:)) + '.wav.h5';        
+                readdata = hdf5read(char(fn), '/features');
+                readdata = readdata';
+            elseif(strcmp(features, 'mfc'))
+                fn = spex_path_prefix + target_dataset_name + '/' + (filenames(index,:)) + '.mfc';    
+                readdata = readhtk('fn');
+            end
+            
             normalized = normalize_features(readdata);
-            N = size(normalized,2);
-            matdata(:,(j-1) * N+1 : j * N) = normalized;
+            N = size(normalized,1);
+            matdata((j-1) * N+1 : j * N,:) = normalized;
         end
 
         %   COMPUTE TRANSFORM MATRIX AND WRITE
 
         % Compute transform of source distribution and fetch covariance of 
         % target distribution from file
-        cov_s = cov(matdata');
+        cov_s = cov(matdata);
         c_s_unscaled = cov_s + eye(size(cov_s, 2));
         c_s = c_s_unscaled ^ (-1/2);
         A = c_s * c_t; % This is the transform matrix.
@@ -204,7 +220,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function A = normalize_features(mat)
-
+    
     % Sum the features.
     lambda = sum(mat, 2);
     
@@ -216,4 +232,5 @@ function A = normalize_features(mat)
 
     % Compute z-scale
     A = zscore(scaled, 1);
+    
 end
