@@ -1,6 +1,6 @@
-**Bird Audio Detection Challenge 2018 - DCASE Task 3**
+# Bird Audio Detection Challenge 2018 - DCASE Task 3
 
-This is the submission for DCASE 2018 Task 3 by UKYSpeechLab
+This is the submission for [DCASE 2018 Task 3](http://dcase.community/challenge2018/task-bird-audio-detection) by UKYSpeechLab
 
 **Required Software:**
 
@@ -59,3 +59,11 @@ Run the python code "compute_ave.py" from the main project directory after all o
 - DCASE_submission_enhancement.csv
 - DCASE_submission_multimodel.csv
 - Compute_ave.py will generate "DCASE_submission_final.csv" which is the final prediction file.
+
+**Team Members**
+Michael T. Johnson
+Narjes Bozorg
+Sidrah Liaqat
+Neenu Jose
+Patrick Conrey
+Anthony Tamasi
