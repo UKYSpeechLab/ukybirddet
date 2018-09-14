@@ -61,9 +61,9 @@ Run the python code "compute_ave.py" from the main project directory after all o
 - Compute_ave.py will generate "DCASE_submission_final.csv" which is the final prediction file.
 
 **Team Members**
-Michael T. Johnson
-Narjes Bozorg
-Sidrah Liaqat
-Neenu Jose
-Patrick Conrey
+Michael T. Johnson, 
+Narjes Bozorg, 
+Sidrah Liaqat, 
+Neenu Jose, 
+Patrick Conrey, 
 Anthony Tamasi
