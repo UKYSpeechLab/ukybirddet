@@ -16,7 +16,7 @@ For running this project on the DCASE challenge 2018 data, follow this directory
 - < project directory >/workingfiles/features_baseline [download link](https://drive.google.com/drive/folders/1Zf8LQxZF9KISByGmmxx-dbtHLc5dk9Ib?usp=sharing)
 - < project directory >/workingfiles/features_high_frequency [download link](https://drive.google.com/open?id=14DJczxbwCv0Z7uFBfDDUVv6a3cZ3SAu4)
 - < project directory >/workingfiles/features_high_temporal [download link](https://drive.google.com/open?id=1rPwJL8Y0EPPbh6V-HhTlvcyqnFJOQmfI)
-- < project directory >/workingfiles/features_ht_enhanced [download link]
+- < project directory >/workingfiles/features_ht_enhanced [download link](https://drive.google.com/drive/folders/1G-mrEuYahj-Zq3JbNiswdmHsxbwRSb2D?usp=sharing)
 
 In each of these four directories, place the feature files from the provided download links such that each directory should have following six sub-directories:
 
