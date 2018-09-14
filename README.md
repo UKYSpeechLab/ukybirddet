@@ -13,10 +13,10 @@ This is the submission for DCASE 2018 Task 3 by UKYSpeechLab
 
 For running this project on the DCASE challenge 2018 data, follow this directory structure:
 
-- <project directory>/workingfiles/features_baseline [download link](https://drive.google.com/drive/folders/1Zf8LQxZF9KISByGmmxx-dbtHLc5dk9Ib?usp=sharing)
-- <project directory>/workingfiles/features_high_frequency [download link](https://drive.google.com/open?id=14DJczxbwCv0Z7uFBfDDUVv6a3cZ3SAu4)
-- <project directory>/workingfiles/features_high_temporal [download link](https://drive.google.com/open?id=1rPwJL8Y0EPPbh6V-HhTlvcyqnFJOQmfI)
-- <project directory>/workingfiles/features_ht_enhanced [download link]
+- < project directory >/workingfiles/features_baseline [download link](https://drive.google.com/drive/folders/1Zf8LQxZF9KISByGmmxx-dbtHLc5dk9Ib?usp=sharing)
+- < project directory >/workingfiles/features_high_frequency [download link](https://drive.google.com/open?id=14DJczxbwCv0Z7uFBfDDUVv6a3cZ3SAu4)
+- < project directory >/workingfiles/features_high_temporal [download link](https://drive.google.com/open?id=1rPwJL8Y0EPPbh6V-HhTlvcyqnFJOQmfI)
+- < project directory >/workingfiles/features_ht_enhanced [download link]
 
 In each of these four directories, place the feature files from the provided download links such that each directory should have following six sub-directories:
 
@@ -38,7 +38,7 @@ In order to reproduce the results of this submission, place the python files in 
 
 As a result of running the above codes, six prediction files will be generated in the "prediction" directory. These are csv format files which have the same format that is the required format of DCASE challenge submission.
 
-Average of above six prediction files:
+**Average of above six prediction files:**
 
 Our top scoring submission to the DCASE challenge is a simple unweighted average of the above six predictions. 
 Run the python code "compute_ave.py" from the main project directory after all of the following six prediction files have been generated.
