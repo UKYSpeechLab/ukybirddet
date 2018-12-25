@@ -2,6 +2,8 @@
 
 This is the submission for [DCASE 2018 Task 3](http://dcase.community/challenge2018/task-bird-audio-detection) by UKYSpeechLab
 
+The work done on this project has been published in DCASE 2018 Workshop : [Domain Tuning Methods for Bird Audio Detection](http://dcase.community/documents/workshop2018/proceedings/DCASE2018Workshop_Liaqat_138.pdf)
+
 **Required Software:**
 
 - Python version 3.5
